@@ -1,0 +1,156 @@
+package com.jte.sync2es.extract.impl;
+
+import com.jte.sync2es.exception.ShouldNeverHappenException;
+import com.jte.sync2es.extract.SourceExtract;
+import com.jte.sync2es.model.mysql.ColumnMeta;
+import com.jte.sync2es.model.mysql.IndexMeta;
+import com.jte.sync2es.model.mysql.IndexType;
+import com.jte.sync2es.model.mysql.TableMeta;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DataSourceUtils;
+import org.springframework.stereotype.Service;
+
+import java.sql.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+
+@Service
+public class MysqlSourceExtractImpl implements SourceExtract {
+
+    public final String GET_ALL_TABLES_SQL="select table_name from information_schema.tables where table_schema=? and table_type='base table'";
+    public final String GET_DB_NAME_SQL="select database() ";
+
+    @Autowired
+    @Qualifier("allTemplate")
+    Map<String,JdbcTemplate> allTemplate;
+
+    @Override
+    public TableMeta getTableMate(String dbId,String tableName) {
+        JdbcTemplate jdbcTemplate=getJdbcTemplate(dbId);
+        String sql = "SELECT * FROM " + tableName + " LIMIT 1";
+        Connection conn=null;
+        try {
+            conn=jdbcTemplate.getDataSource().getConnection();
+            Statement stmt = jdbcTemplate.getDataSource().getConnection().createStatement();
+            ResultSet rs = stmt.executeQuery(sql);
+            return resultSetMetaToSchema(rs.getMetaData(), jdbcTemplate.getDataSource().getConnection().getMetaData());
+        }
+        catch (Exception e) {
+            throw new ShouldNeverHappenException(String.format("Failed to fetch schema of %s", tableName), e);
+        }
+        finally {
+            if(Objects.nonNull(conn)){
+                DataSourceUtils.releaseConnection(conn,jdbcTemplate.getDataSource());
+            }
+        }
+    }
+
+    @Override
+    public List<String> getAllTableName(String dbId) {
+        JdbcTemplate jdbcTemplate=getJdbcTemplate(dbId);
+        String dbName=jdbcTemplate.queryForObject(GET_DB_NAME_SQL,String.class);
+        List<String> tableNameList=jdbcTemplate.queryForList(GET_ALL_TABLES_SQL,String.class,new String[]{dbName});
+        return tableNameList;
+    }
+
+    private JdbcTemplate getJdbcTemplate(String dbId)
+    {
+        JdbcTemplate jdbcTemplate=allTemplate.get(dbId);
+        if(Objects.isNull(jdbcTemplate))
+        {
+            throw new ShouldNeverHappenException("can not find jdbcTemplate for id:"+dbId);
+        }
+        return jdbcTemplate;
+    }
+
+    private TableMeta resultSetMetaToSchema(ResultSetMetaData rsmd, DatabaseMetaData dbmd)
+            throws SQLException {
+        //always "" for mysql
+        String schemaName = rsmd.getSchemaName(1);
+        String catalogName = rsmd.getCatalogName(1);
+        /*
+         * use ResultSetMetaData to get the pure table name
+         * can avoid the problem below
+         *
+         * select * from account_tbl
+         * select * from account_TBL
+         * select * from `account_tbl`
+         * select * from account.account_tbl
+         */
+        String tableName = rsmd.getTableName(1);
+
+        TableMeta tm = new TableMeta();
+        tm.setTableName(tableName);
+
+        /*
+         * here has two different type to get the data
+         * make sure the table name was right
+         * 1. show full columns from xxx from xxx(normal)
+         * 2. select xxx from xxx where catalog_name like ? and table_name like ?(informationSchema=true)
+         */
+
+        try (ResultSet rsColumns = dbmd.getColumns(catalogName, schemaName, tableName, "%");
+             ResultSet rsIndex = dbmd.getIndexInfo(catalogName, schemaName, tableName, false, true)) {
+            while (rsColumns.next()) {
+                ColumnMeta col = new ColumnMeta();
+                col.setTableCat(rsColumns.getString("TABLE_CAT"));
+                col.setTableSchemaName(rsColumns.getString("TABLE_SCHEM"));
+                col.setTableName(rsColumns.getString("TABLE_NAME"));
+                col.setColumnName(rsColumns.getString("COLUMN_NAME"));
+                col.setDataType(rsColumns.getInt("DATA_TYPE"));
+                col.setDataTypeName(rsColumns.getString("TYPE_NAME"));
+                col.setColumnSize(rsColumns.getInt("COLUMN_SIZE"));
+                col.setDecimalDigits(rsColumns.getInt("DECIMAL_DIGITS"));
+                col.setNumPrecRadix(rsColumns.getInt("NUM_PREC_RADIX"));
+                col.setNullAble(rsColumns.getInt("NULLABLE"));
+                col.setRemarks(rsColumns.getString("REMARKS"));
+                col.setColumnDef(rsColumns.getString("COLUMN_DEF"));
+                col.setSqlDataType(rsColumns.getInt("SQL_DATA_TYPE"));
+                col.setSqlDatetimeSub(rsColumns.getInt("SQL_DATETIME_SUB"));
+                col.setCharOctetLength(rsColumns.getInt("CHAR_OCTET_LENGTH"));
+                col.setOrdinalPosition(rsColumns.getInt("ORDINAL_POSITION"));
+                col.setIsNullAble(rsColumns.getString("IS_NULLABLE"));
+                col.setIsAutoincrement(rsColumns.getString("IS_AUTOINCREMENT"));
+
+                tm.getAllColumns().put(col.getColumnName(), col);
+            }
+
+            while (rsIndex.next()) {
+                String indexName = rsIndex.getString("INDEX_NAME");
+                String colName = rsIndex.getString("COLUMN_NAME");
+                ColumnMeta col = tm.getAllColumns().get(colName);
+
+                if (tm.getAllIndexes().containsKey(indexName)) {
+                    IndexMeta index = tm.getAllIndexes().get(indexName);
+                    index.getValues().add(col);
+                } else {
+                    IndexMeta index = new IndexMeta();
+                    index.setIndexName(indexName);
+                    index.setNonUnique(rsIndex.getBoolean("NON_UNIQUE"));
+                    index.setIndexQualifier(rsIndex.getString("INDEX_QUALIFIER"));
+                    index.setIndexName(rsIndex.getString("INDEX_NAME"));
+                    index.setType(rsIndex.getShort("TYPE"));
+                    index.setOrdinalPosition(rsIndex.getShort("ORDINAL_POSITION"));
+                    index.setAscOrDesc(rsIndex.getString("ASC_OR_DESC"));
+                    index.setCardinality(rsIndex.getInt("CARDINALITY"));
+                    index.getValues().add(col);
+                    if ("PRIMARY".equalsIgnoreCase(indexName)) {
+                        index.setIndextype(IndexType.PRIMARY);
+                    } else if (!index.isNonUnique()) {
+                        index.setIndextype(IndexType.UNIQUE);
+                    } else {
+                        index.setIndextype(IndexType.NORMAL);
+                    }
+                    tm.getAllIndexes().put(indexName, index);
+                }
+            }
+            if (tm.getAllIndexes().isEmpty()) {
+                throw new ShouldNeverHappenException("Could not found any index in the table: " + tableName);
+            }
+        }
+        return tm;
+    }
+}
