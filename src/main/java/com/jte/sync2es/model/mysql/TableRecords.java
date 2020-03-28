@@ -15,28 +15,40 @@
  */
 package com.jte.sync2es.model.mysql;
 
+import com.jte.sync2es.conf.KafkaConfig;
+import com.jte.sync2es.exception.IllegalDataStructureException;
 import com.jte.sync2es.exception.ShouldNeverHappenException;
+import com.jte.sync2es.extract.impl.KafkaMsgListener;
+import com.jte.sync2es.transform.RecordsTransform;
+import com.jte.sync2es.model.mq.TcMqMessage;
+import com.jte.sync2es.util.JsonUtil;
+import lombok.extern.slf4j.Slf4j;
 
-import javax.sql.rowset.serial.SerialBlob;
-import javax.sql.rowset.serial.SerialClob;
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * The type Table records.
  *
  * @author sharajava
  */
+@Slf4j
 public class TableRecords {
 
     private transient TableMeta tableMeta;
 
     private String tableName;
 
-    private List<Row> rows = new ArrayList<Row>();
+    /**
+     * 对应mq消息中的where属性
+     */
+    private List<Row> whereRows = new ArrayList<Row>();
+    /**
+     * 对应mq消息中的field属性
+     */
+    private List<Row> fieldRows = new ArrayList<Row>();
+
+    private TcMqMessage mqMessage;
 
     /**
      * Gets table name.
@@ -57,27 +69,43 @@ public class TableRecords {
     }
 
     /**
-     * Gets rows.
+     * Gets whereRows.
      *
-     * @return the rows
+     * @return the whereRows
      */
-    public List<Row> getRows() {
-        return rows;
+    public List<Row> getWhereRows() {
+        return whereRows;
     }
 
     /**
-     * Sets rows.
+     * Sets whereRows.
      *
-     * @param rows the rows
+     * @param whereRows the whereRows
      */
-    public void setRows(List<Row> rows) {
-        this.rows = rows;
+    public void setWhereRows(List<Row> whereRows) {
+        this.whereRows = whereRows;
+    }
+
+    public TcMqMessage getMqMessage() {
+        return mqMessage;
+    }
+
+    public void setMqMessage(TcMqMessage mqMessage) {
+        this.mqMessage = mqMessage;
+    }
+
+    public List<Row> getFieldRows() {
+        return fieldRows;
+    }
+
+    public void setFieldRows(List<Row> fieldRows) {
+        this.fieldRows = fieldRows;
     }
 
     /**
      * Instantiates a new Table records.
      */
-    public TableRecords() {
+    private TableRecords() {
 
     }
 
@@ -103,30 +131,32 @@ public class TableRecords {
         this.tableName = tableMeta.getTableName();
     }
 
-    /**
-     * Size int.
-     *
-     * @return the int
-     */
-    public int size() {
-        return rows.size();
-    }
+
 
     /**
-     * Add.
+     * Add where row.
      *
      * @param row the row
      */
-    public void add(Row row) {
-        rows.add(row);
+    public void addWhereRow(Row row) {
+        whereRows.add(row);
     }
 
     /**
-     * Pk rows list.
+     * Add field row.
      *
-     * @return return a list. each element of list is a map,the map hold the pk column name as a key and field as the value
+     * @param row the row
      */
-    public List<Map<String,Field>> pkRows() {
+    public void addFieldRow(Row row) {
+        fieldRows.add(row);
+    }
+
+    /**
+     *  Get primary key value
+     * @param rows 传入whereRows 还是 fieldRows
+     * @return return a list. each element of list is a map as a row,the map hold the pk column name as a key and field as the value
+     */
+    public List<Map<String,Field>> pkRows(List<Row> rows) {
         final List<String> pkNameList = getTableMeta().getPrimaryKeyOnlyName();
         List<Map<String,Field>> pkRows = new ArrayList<>();
         for (Row row : rows) {
@@ -151,94 +181,98 @@ public class TableRecords {
         return tableMeta;
     }
 
-    /**
-     * Empty table records.
-     *
-     * @param tableMeta the table meta
-     * @return the table records
-     */
-    public static TableRecords empty(TableMeta tableMeta) {
-        return new EmptyTableRecords(tableMeta);
-    }
 
     /**
      * Build records table records.
      *
-     * @param tmeta     the tmeta
-     * @param resultSet the result set
+     * @param meta     the tmeta
+     * @param mqMessage the result set
      * @return the table records
      * @throws SQLException the sql exception
      */
-    public static TableRecords buildRecords(TableMeta tmeta, ResultSet resultSet) throws SQLException {
-        TableRecords records = new TableRecords(tmeta);
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        int columnCount = resultSetMetaData.getColumnCount();
+    public static TableRecords buildRecords(TableMeta meta, TcMqMessage mqMessage) throws IllegalDataStructureException {
+        if(Objects.isNull(meta))
+        {
+            throw new IllegalArgumentException("TableMeta is null");
+        }
+        TableRecords records = new TableRecords(meta);
+        records.setTableName(meta.getTableName());
+        records.setMqMessage(mqMessage);
+        List<ColumnMeta> columnMetaList=meta.getAllColumnList();
+        int tableColumnSize=columnMetaList.size();
+        int fieldSize=mqMessage.getField().size();
+        int whereSize=mqMessage.getWhere().size();
 
-        while (resultSet.next()) {
-            List<Field> fields = new ArrayList<>(columnCount);
-            for (int i = 1; i <= columnCount; i++) {
-                String colName = resultSetMetaData.getColumnName(i);
-                ColumnMeta col = tmeta.getColumnMeta(colName);
-                Field field = new Field();
-                field.setName(col.getColumnName());
-                if (tmeta.getPrimaryKeyOnlyName().stream().anyMatch(e -> field.getName().equalsIgnoreCase(e))) {
-                    field.setKeyType(KeyType.PRIMARY_KEY);
+        if(KafkaMsgListener.EVENT_TYPE_DELETE.equals(mqMessage.getEventtypestr())&&whereSize!=tableColumnSize)
+        {
+            log.error("meta:{} mqMessage:{}",JsonUtil.objectToJson(meta),JsonUtil.objectToJson(mqMessage));
+            throw new IllegalDataStructureException("column can't match when delete! tableName:"+meta.getTableName());
+        }
+        else if(KafkaMsgListener.EVENT_TYPE_INSERT.equals(mqMessage.getEventtypestr())&&fieldSize!=tableColumnSize)
+        {
+            log.error("meta:{} mqMessage:{}",JsonUtil.objectToJson(meta),JsonUtil.objectToJson(mqMessage));
+            throw new IllegalDataStructureException("column can't match when delete! tableName:"+meta.getTableName());
+        }
+        else if(KafkaMsgListener.EVENT_TYPE_UPDATE.equals(mqMessage.getEventtypestr())&&
+                (fieldSize!=tableColumnSize||whereSize!=tableColumnSize))
+        {
+            log.error("meta:{} mqMessage:{}",JsonUtil.objectToJson(meta),JsonUtil.objectToJson(mqMessage));
+            throw new IllegalDataStructureException("column can't match when delete! tableName:"+meta.getTableName());
+        }
+
+        boolean shouldCalculateWhere=KafkaMsgListener.EVENT_TYPE_DELETE.equals(mqMessage.getEventtypestr())||KafkaMsgListener.EVENT_TYPE_UPDATE.equals(mqMessage.getEventtypestr());
+        boolean shouldCalculateField=KafkaMsgListener.EVENT_TYPE_INSERT.equals(mqMessage.getEventtypestr())||KafkaMsgListener.EVENT_TYPE_UPDATE.equals(mqMessage.getEventtypestr());
+
+        List<Field> whereFields = new ArrayList<>(tableColumnSize);
+        List<Field> fieldFields = new ArrayList<>(tableColumnSize);
+        for(int i =0;i<columnMetaList.size();i++)
+        {
+            ColumnMeta currColumn=columnMetaList.get(i);
+
+            if(shouldCalculateWhere)
+            {
+                String whereValue=mqMessage.getWhere().get(i);
+                //对应mq中的where属性
+                Field whereField = new Field();
+                whereField.setName(currColumn.getColumnName());
+                if (meta.getPrimaryKeyOnlyName().stream().anyMatch(e -> whereField.getName().equalsIgnoreCase(e))) {
+                    whereField.setKeyType(KeyType.PRIMARY_KEY);
                 }
-                field.setType(col.getDataType());
-                // mysql will not run in this code
-                // cause mysql does not use java.sql.Blob, java.sql.sql.Clob to process Blob and Clob column
-                if (col.getDataType() == JDBCType.BLOB.getVendorTypeNumber()) {
-                    Blob blob = resultSet.getBlob(i);
-                    if (blob != null) {
-                        field.setValue(new SerialBlob(blob));
-                    }
-
-                } else if (col.getDataType() == JDBCType.CLOB.getVendorTypeNumber()) {
-                    Clob clob = resultSet.getClob(i);
-                    if (clob != null) {
-                        field.setValue(new SerialClob(clob));
-                    }
-                } else {
-                    field.setValue(resultSet.getObject(i));
-                }
-
-                fields.add(field);
+                whereField.setType(currColumn.getDataType());
+                whereField.setValue(whereValue);
+                whereFields.add(whereField);
             }
 
-            Row row = new Row();
-            row.setFields(fields);
+            if(shouldCalculateField)
+            {
+                String fieldValue=mqMessage.getField().get(i);
+                //对应mq中的field属性
+                Field fieldField = new Field();
+                fieldField.setName(currColumn.getColumnName());
+                if (meta.getPrimaryKeyOnlyName().stream().anyMatch(e -> fieldField.getName().equalsIgnoreCase(e))) {
+                    fieldField.setKeyType(KeyType.PRIMARY_KEY);
+                }
+                fieldField.setType(currColumn.getDataType());
+                fieldField.setValue(fieldValue);
+                fieldFields.add(fieldField);
+            }
+        }
 
-            records.add(row);
+        if(shouldCalculateWhere)
+        {
+            Row whereRow = new Row();
+            whereRow.setFields(whereFields);
+            records.addWhereRow(whereRow);
+        }
+
+        if(shouldCalculateField)
+        {
+            Row fieldRow = new Row();
+            fieldRow.setFields(fieldFields);
+            records.addFieldRow(fieldRow);
         }
         return records;
     }
 
-    public static class EmptyTableRecords extends TableRecords {
 
-        public EmptyTableRecords() {}
-
-        public EmptyTableRecords(TableMeta tableMeta) {
-            this.setTableMeta(tableMeta);
-        }
-
-        @Override
-        public int size() {
-            return 0;
-        }
-
-        @Override
-        public List<Map<String,Field>> pkRows() {
-            return new ArrayList<>();
-        }
-
-        @Override
-        public void add(Row row) {
-            throw new UnsupportedOperationException("xxx");
-        }
-
-        @Override
-        public TableMeta getTableMeta() {
-            throw new UnsupportedOperationException("xxx");
-        }
-    }
 }

@@ -46,4 +46,8 @@ public class ColumnMeta {
     private int ordinalPosition;
     private String isNullAble;
     private String isAutoincrement;
+    /**
+     * 是否生效（由配置field-filter决定）；默认为true
+     */
+    private boolean isInclude=true;
 }

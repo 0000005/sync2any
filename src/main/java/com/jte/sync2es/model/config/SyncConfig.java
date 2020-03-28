@@ -7,7 +7,7 @@ import java.util.List;
 @Data
 public class SyncConfig {
     private Mq mq;
-    private String dbId;
+    private String dbName;
     private String syncTables;
     private List<Rule> rules;
 }

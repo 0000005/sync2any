@@ -4,7 +4,7 @@ import lombok.Data;
 
 @Data
 public class Conn {
-    private String id;
+    private String dbName;
     private String url;
     private String username;
     private String password;

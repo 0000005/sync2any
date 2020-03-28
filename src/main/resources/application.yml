@@ -1,22 +1,20 @@
-spring:
-  elasticsearch:
-    rest:
-      uris: 192.168.10.203:9200
-      username: elastic
-      password: changeme
+elasticsearch:
+    uris: 192.168.10.203:9200
+    username: elastic
+    password: changeme
 kafka:
   adress: 192.168.10.204:9092
 
 mysql:
   datasources:
     -
-      id: jte_pms_member
-      url: jdbc:mysql://dcdbt-93lal27n.sql.tencentcdb.com:81/jte_pms_member?useUnicode=true&useSSL=false&characterEncoding=UTF-8&autoReconnect=true&failOverReadOnly=false&useOldAliasMetadataBehavior=true&allowMultiQueries=true&serverTimezone=Hongkong
+      db-name: test
+      url: jdbc:mysql://dcdbt-93lal27n.sql.tencentcdb.com:81/test?useUnicode=true&useSSL=false&characterEncoding=UTF-8&autoReconnect=true&failOverReadOnly=false&useOldAliasMetadataBehavior=true&allowMultiQueries=true&serverTimezone=Hongkong
       username: jte_test
       password: uPmT@8gH2ABN
       driver-class-name: com.mysql.cj.jdbc.Driver
     -
-      id: jte_pms_business
+      db-name: jte_pms_business
       url: jdbc:mysql://dcdbt-93lal27n.sql.tencentcdb.com:81/jte_pms_member?useUnicode=true&useSSL=false&characterEncoding=UTF-8&autoReconnect=true&failOverReadOnly=false&useOldAliasMetadataBehavior=true&allowMultiQueries=true&serverTimezone=Hongkong
       username: jte_test
       password: uPmT@8gH2ABN
@@ -25,16 +23,23 @@ mysql:
 sync2es:
   sync-config:
     -
+      db-name: test
+      sync-tables: "wzh"
       mq:
         topic-name: tdsql2es
-        topic-group: my-test-consumer-group
-      db-id: jte_pms_member
-      sync-tables: "t_pms_member_order_[0-9]{10},t_pms_member,t_pms_member_type"
+        topic-group: local-test-consumer-group
       rules:
         -
-          table: t_pms_member_order_[0-9]{10}
-          index: t_pms_member_order
-          map:  '{"group_code":"groupCode","hotel_code":"hotelCode,integer"}'
-        -
-          table: t_pms_member
-          map: '{"sex":",integer"}'
+          table: wzh
+          map: '{"name":"guestName"}'
+          field-filter: "id,name"
+#      db-name: jte_pms_member
+#      sync-tables: "t_pms_member_order_[0-9]{10},t_pms_member,t_pms_member_type"
+#      rules:
+#        -
+#          table: t_pms_member_order_[0-9]{10}
+#          index: t_pms_member_order
+#          map:  '{"group_code":"groupCode","hotel_code":"hotelCode,integer"}'
+#        -
+#          table: t_pms_member
+#          map: '{"sex":",integer"}'

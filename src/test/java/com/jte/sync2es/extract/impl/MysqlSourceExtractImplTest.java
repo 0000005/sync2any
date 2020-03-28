@@ -18,9 +18,9 @@ public class MysqlSourceExtractImplTest extends Tester {
 
     @Test
     public void getTableMateTest(){
-        TableMeta tableMeta=sourceExtract.getTableMate("jte253","trole");
+        TableMeta tableMeta=sourceExtract.getTableMate("test","wzh");
         Assert.assertTrue(Objects.nonNull(tableMeta));
-        Assert.assertTrue(tableMeta.getAllColumns().keySet().size()>0);
+        Assert.assertTrue(tableMeta.getAllColumnMap().keySet().size()>0);
         Assert.assertTrue(StringUtils.isNotBlank(tableMeta.getTableName()));
     }
 

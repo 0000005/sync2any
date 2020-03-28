@@ -26,7 +26,7 @@ public class MysqlDatasourceConfig {
     public DataSource primaryDataSource() {
         Conn conn=mysqlDb.getDatasources().get(0);
         MyDatasource dataSource = new MyDatasource();
-        dataSource.setId(conn.getId());
+        dataSource.setDbName(conn.getDbName());
         dataSource.setDriverClassName(conn.getDriverClassName());
         dataSource.setUrl(conn.getUrl());
         dataSource.setUsername(conn.getUsername());
@@ -46,7 +46,7 @@ public class MysqlDatasourceConfig {
         {
             Conn conn=connList.get(i);
             MyDatasource dataSource = new MyDatasource();
-            dataSource.setId(conn.getId());
+            dataSource.setDbName(conn.getDbName());
             dataSource.setDriverClassName(conn.getDriverClassName());
             dataSource.setUrl(conn.getUrl());
             dataSource.setUsername(conn.getUsername());
@@ -63,13 +63,13 @@ public class MysqlDatasourceConfig {
     {
         //primary
         Map<String,JdbcTemplate> allTemplate=new HashMap<>();
-        allTemplate.put(((MyDatasource)ds).getId(),new JdbcTemplate(ds));
+        allTemplate.put(((MyDatasource)ds).getDbName(),new JdbcTemplate(ds));
         //other
         List<DataSource> otherDsList=ods.getDsList();
         if (!otherDsList.isEmpty()) {
             for(DataSource myDs:otherDsList)
             {
-                allTemplate.put(((MyDatasource)myDs).getId(),new JdbcTemplate(ds));
+                allTemplate.put(((MyDatasource)myDs).getDbName(),new JdbcTemplate(ds));
             }
         }
         return allTemplate;

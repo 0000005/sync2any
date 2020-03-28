@@ -28,8 +28,8 @@ public class MysqlSourceExtractImpl implements SourceExtract {
     Map<String,JdbcTemplate> allTemplate;
 
     @Override
-    public TableMeta getTableMate(String dbId,String tableName) {
-        JdbcTemplate jdbcTemplate=getJdbcTemplate(dbId);
+    public TableMeta getTableMate(String dbName,String tableName) {
+        JdbcTemplate jdbcTemplate=getJdbcTemplate(dbName);
         String sql = "SELECT * FROM " + tableName + " LIMIT 1";
         Connection conn=null;
         try {
@@ -49,19 +49,18 @@ public class MysqlSourceExtractImpl implements SourceExtract {
     }
 
     @Override
-    public List<String> getAllTableName(String dbId) {
-        JdbcTemplate jdbcTemplate=getJdbcTemplate(dbId);
-        String dbName=jdbcTemplate.queryForObject(GET_DB_NAME_SQL,String.class);
+    public List<String> getAllTableName(String dbName) {
+        JdbcTemplate jdbcTemplate=getJdbcTemplate(dbName);
         List<String> tableNameList=jdbcTemplate.queryForList(GET_ALL_TABLES_SQL,String.class,new String[]{dbName});
         return tableNameList;
     }
 
-    private JdbcTemplate getJdbcTemplate(String dbId)
+    private JdbcTemplate getJdbcTemplate(String dbName)
     {
-        JdbcTemplate jdbcTemplate=allTemplate.get(dbId);
+        JdbcTemplate jdbcTemplate=allTemplate.get(dbName);
         if(Objects.isNull(jdbcTemplate))
         {
-            throw new ShouldNeverHappenException("can not find jdbcTemplate for id:"+dbId);
+            throw new ShouldNeverHappenException("can not find jdbcTemplate for db name:"+dbName);
         }
         return jdbcTemplate;
     }
@@ -84,6 +83,8 @@ public class MysqlSourceExtractImpl implements SourceExtract {
 
         TableMeta tm = new TableMeta();
         tm.setTableName(tableName);
+        tm.setDbName(catalogName.toLowerCase());
+//        tm.setDbName();
 
         /*
          * here has two different type to get the data
@@ -114,14 +115,14 @@ public class MysqlSourceExtractImpl implements SourceExtract {
                 col.setOrdinalPosition(rsColumns.getInt("ORDINAL_POSITION"));
                 col.setIsNullAble(rsColumns.getString("IS_NULLABLE"));
                 col.setIsAutoincrement(rsColumns.getString("IS_AUTOINCREMENT"));
-
-                tm.getAllColumns().put(col.getColumnName(), col);
+                tm.getAllColumnMap().put(col.getColumnName(), col);
+                tm.getAllColumnList().add(col);
             }
 
             while (rsIndex.next()) {
                 String indexName = rsIndex.getString("INDEX_NAME");
                 String colName = rsIndex.getString("COLUMN_NAME");
-                ColumnMeta col = tm.getAllColumns().get(colName);
+                ColumnMeta col = tm.getAllColumnMap().get(colName);
 
                 if (tm.getAllIndexes().containsKey(indexName)) {
                     IndexMeta index = tm.getAllIndexes().get(indexName);

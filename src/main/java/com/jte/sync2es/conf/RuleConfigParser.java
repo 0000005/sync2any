@@ -1,9 +1,10 @@
-package com.jte.sync2es.extract.impl;
+package com.jte.sync2es.conf;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.jte.sync2es.exception.ShouldNeverHappenException;
-import com.jte.sync2es.extract.RuleParser;
 import com.jte.sync2es.extract.SourceExtract;
 import com.jte.sync2es.model.config.MysqlDb;
 import com.jte.sync2es.model.config.Rule;
@@ -13,18 +14,34 @@ import com.jte.sync2es.model.es.EsDateType;
 import com.jte.sync2es.model.mysql.ColumnMeta;
 import com.jte.sync2es.model.mysql.TableMeta;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.stereotype.Service;
+import org.springframework.context.annotation.Configuration;
 
 import javax.annotation.Resource;
 import java.sql.Types;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-@Service
-public class RuleParserImpl implements RuleParser {
+/**
+ * 规则解析器：
+ * 1、哪些表需要被传输
+ * 2、表的字段名称和字段类型的映射
+ * 3、索引名称的映射
+ * 4、过滤器的规则
+ */
+
+@Configuration
+public class RuleConfigParser {
+
+
+    /**
+     * key: dbName$tableName
+     * value: TableMeta
+     */
+    public static final Cache<String, TableMeta> RULES_MAP = CacheBuilder.newBuilder().build();
 
     @Resource
     SourceExtract sourceExtract;
@@ -33,14 +50,13 @@ public class RuleParserImpl implements RuleParser {
     @Resource
     MysqlDb mysqlDb;
 
-    @Override
     public void initRules() {
         mysqlDb.getDatasources().forEach(db->{
             //获取所有的表名
-            List<String> tableNameList=sourceExtract.getAllTableName(db.getId());
+            List<String> tableNameList=sourceExtract.getAllTableName(db.getDbName());
             //找到当前数据库的所有规则
             List<SyncConfig> currSyncConfigList=sync2es.getSyncConfig().stream()
-                    .filter(s->db.getId().equalsIgnoreCase(s.getDbId()))
+                    .filter(s->db.getDbName().equalsIgnoreCase(s.getDbName()))
                     .collect(Collectors.toList());
             for(int r=0;r<currSyncConfigList.size();r++)
             {
@@ -65,10 +81,10 @@ public class RuleParserImpl implements RuleParser {
                         Rule rule=config.getRules().stream()
                                 .filter(tr -> Pattern.matches(tr.getTable(),realTableName))
                                 .findFirst().orElse(new Rule());
-                        tableMeta=sourceExtract.getTableMate(db.getId(),realTableName);
+                        tableMeta=sourceExtract.getTableMate(db.getDbName(),realTableName);
                         //填充匹配规则
                         parseColumnMeta(tableMeta,rule);
-                        RULES_MAP.put(config.getDbId()+"$"+realTableName,tableMeta);
+                        RULES_MAP.put(config.getDbName()+"$"+realTableName,tableMeta);
                     }
                 }
             }
@@ -149,6 +165,25 @@ public class RuleParserImpl implements RuleParser {
         {
             tableMeta.setEsIndexName(rule.getIndex());
         }
+        else
+        {
+            //默认index命名规则：dbName-tableName
+            tableMeta.setEsIndexName(tableMeta.getTableName().toLowerCase()+"-"+tableMeta.getTableName());
+        }
+        if(StringUtils.isNotBlank(rule.getFieldFilter()))
+        {
+            List<String>  includeFields= Arrays.asList(rule.getFieldFilter().toLowerCase().split(","));
+            tableMeta.getAllColumnList()
+                    .forEach(t->t.setInclude(includeFields.contains(t.getColumnName().toLowerCase())));
+            List<String> pkColumnNameList=tableMeta.getPrimaryKeyOnlyName();
+            boolean isContainPk=tableMeta.getAllColumnList().stream()
+                    .filter(c->pkColumnNameList.contains(c.getColumnName().toLowerCase()))
+                    .count()>0;
+            if(!isContainPk)
+            {
+                throw new ShouldNeverHappenException("fields filter must contain pk column!");
+            }
+        }
         //计算字段
         if(StringUtils.isNotBlank(rule.getMap()))
         {
@@ -162,9 +197,9 @@ public class RuleParserImpl implements RuleParser {
             {
                 throw new ShouldNeverHappenException("parse result is null, map:"+rule.getMap());
             }
-            for(String columnName:tableMeta.getAllColumns().keySet())
+            for(String columnName:tableMeta.getAllColumnMap().keySet())
             {
-                ColumnMeta columnMeta=tableMeta.getAllColumns().get(columnName);
+                ColumnMeta columnMeta=tableMeta.getAllColumnMap().get(columnName);
                 String mapValue=columnMap.get(columnName);
                 if(StringUtils.isBlank(mapValue))
                 {

@@ -1,49 +1,49 @@
 package com.jte.sync2es.conf;
 
+import com.jte.sync2es.extract.impl.KafkaMsgListener;
 import com.jte.sync2es.model.config.KafkaMate;
 import com.jte.sync2es.model.config.Mq;
 import com.jte.sync2es.model.config.Sync2es;
+import com.jte.sync2es.transform.RecordsTransform;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
-import org.springframework.kafka.listener.*;
-import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.listener.ContainerProperties;
+import org.springframework.kafka.listener.KafkaMessageListenerContainer;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 @Configuration
+@Slf4j
 public class KafkaConfig {
     @Resource
     KafkaMate kafkaMate;
     @Resource
     Sync2es sync2es;
-    public static List<KafkaMessageListenerContainer> kafkaList= new ArrayList();
+    @Resource
+    RecordsTransform transform;
+    public static final Set<KafkaMessageListenerContainer> KAFKA_SET= new HashSet<>();
 
     @PostConstruct
     public void initKafka() {
         sync2es.getSyncConfig().forEach(sdb->{
             ContainerProperties containerProps = new ContainerProperties(sdb.getMq().getTopicName());
             containerProps.setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
-            containerProps.setMessageListener(new AcknowledgingMessageListener<String, String>() {
-                @Override
-                public void onMessage(ConsumerRecord<String, String> data, Acknowledgment acknowledgment) {
-                    System.out.println("message key:"+data.key()+" value:"+data.value());
-                    acknowledgment.acknowledge();
-                }
-            });
+            containerProps.setMessageListener(new KafkaMsgListener(transform));
             KafkaMessageListenerContainer<String, String> container = createContainer(sdb.getMq(),containerProps);
-            container.setBeanName(sdb.getDbId()+"_"+sdb.getMq().getTopicName());
+            container.setBeanName(sdb.getDbName()+"_"+sdb.getMq().getTopicName());
             container.start();
-            kafkaList.add(container);
+            KAFKA_SET.add(container);
         });
     }
+
 
     private KafkaMessageListenerContainer<String, String> createContainer(Mq mq,ContainerProperties containerProps) {
         Map<String, Object> props = consumerProps(mq);

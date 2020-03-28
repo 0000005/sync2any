@@ -7,5 +7,5 @@ import javax.sql.DataSource;
 
 @Data
 public class MyDatasource extends DriverManagerDataSource {
-    private String id;
+    private String dbName;
 }

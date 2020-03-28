@@ -27,12 +27,17 @@ import java.util.Map.Entry;
 public class TableMeta {
     private String tableName;
     private String esIndexName;
+    private String dbName;
 
     /**
      * key: column name
      */
 
-    private Map<String, ColumnMeta> allColumns = new LinkedHashMap<String, ColumnMeta>();
+    private Map<String, ColumnMeta> allColumnMap = new LinkedHashMap<String, ColumnMeta>();
+    /**
+     * list of column,make sure the order of item.
+     */
+    private List<ColumnMeta> allColumnList = new ArrayList();
     /**
      * key: index name
      */
@@ -72,7 +77,7 @@ public class TableMeta {
      * @return the column meta
      */
     public ColumnMeta getColumnMeta(String colName) {
-        return allColumns.get(colName);
+        return allColumnMap.get(colName);
     }
 
     /**
@@ -80,8 +85,8 @@ public class TableMeta {
      *
      * @return the all columns
      */
-    public Map<String, ColumnMeta> getAllColumns() {
-        return allColumns;
+    public Map<String, ColumnMeta> getAllColumnMap() {
+        return allColumnMap;
     }
 
     /**
@@ -94,6 +99,21 @@ public class TableMeta {
     }
 
 
+    public List<ColumnMeta> getAllColumnList() {
+        return allColumnList;
+    }
+
+    public void setAllColumnList(List<ColumnMeta> allColumnList) {
+        this.allColumnList = allColumnList;
+    }
+
+    public String getDbName() {
+        return dbName;
+    }
+
+    public void setDbName(String dbName) {
+        this.dbName = dbName;
+    }
 
     /**
      * Gets primary key map.
@@ -122,7 +142,7 @@ public class TableMeta {
     public List<String> getPrimaryKeyOnlyName() {
         List<String> list = new ArrayList<>();
         for (Entry<String, ColumnMeta> entry : getPrimaryKeyMap().entrySet()) {
-            list.add(entry.getKey());
+            list.add(entry.getKey().toLowerCase());
         }
         return list;
     }
@@ -152,32 +172,4 @@ public class TableMeta {
         }
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (!(o instanceof TableMeta)) {
-            return false;
-        }
-        TableMeta tableMeta = (TableMeta) o;
-        if (!Objects.equals(tableMeta.tableName, this.tableName)) {
-            return false;
-        }
-        if (!Objects.equals(tableMeta.allColumns, this.allColumns)) {
-            return false;
-        }
-        if (!Objects.equals(tableMeta.allIndexes, this.allIndexes)) {
-            return false;
-        }
-        return true;
-    }
-
-    @Override
-    public int hashCode() {
-        int hash = Objects.hashCode(tableName);
-        hash += Objects.hashCode(allColumns);
-        hash += Objects.hashCode(allIndexes);
-        return hash;
-    }
 }

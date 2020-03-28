@@ -1,4 +1,4 @@
-package com.jte.sync2es.model;
+package com.jte.sync2es.model.config;
 
 import com.jte.sync2es.Tester;
 import com.jte.sync2es.model.config.MysqlDb;
