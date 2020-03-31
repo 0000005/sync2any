@@ -1,5 +1,5 @@
 elasticsearch:
-    uris: 192.168.10.203:9200
+    uris: 192.168.10.204:9200
     username: elastic
     password: changeme
 kafka:

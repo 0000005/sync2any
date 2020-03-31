@@ -15,16 +15,14 @@
  */
 package com.jte.sync2es.model.mysql;
 
-import com.jte.sync2es.conf.KafkaConfig;
 import com.jte.sync2es.exception.IllegalDataStructureException;
 import com.jte.sync2es.exception.ShouldNeverHappenException;
 import com.jte.sync2es.extract.impl.KafkaMsgListener;
-import com.jte.sync2es.transform.RecordsTransform;
 import com.jte.sync2es.model.mq.TcMqMessage;
 import com.jte.sync2es.util.JsonUtil;
 import lombok.extern.slf4j.Slf4j;
 
-import java.sql.*;
+import java.sql.SQLException;
 import java.util.*;
 
 /**
@@ -166,6 +164,23 @@ public class TableRecords {
                 if (pkNameList.stream().anyMatch(e -> field.getName().equalsIgnoreCase(e))) {
                     rowMap.put(field.getName(),field);
                 }
+            }
+            pkRows.add(rowMap);
+        }
+        return pkRows;
+    }
+
+    /**
+     *  Get all column's key value
+     * @param rows 传入whereRows 还是 fieldRows
+     * @return return a list. each element of list is a map as a row,the map hold the pk column name as a key and field as the value
+     */
+    public List<Map<String,Field>> parseToMap(List<Row> rows) {
+        List<Map<String,Field>> pkRows = new ArrayList<>();
+        for (Row row : rows) {
+            Map<String,Field> rowMap = new HashMap<>(70);
+            for (Field field : row.getFields()) {
+                rowMap.put(field.getName(),field);
             }
             pkRows.add(rowMap);
         }

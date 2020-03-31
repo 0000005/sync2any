@@ -27,7 +27,7 @@ public class MysqlSourceExtractImplTest extends Tester {
     @Test
     public void getAllTableNameTest()
     {
-        List<String> tableNames=sourceExtract.getAllTableName("jte253");
+        List<String> tableNames=sourceExtract.getAllTableName("test");
         System.out.println(tableNames);
         Assert.assertTrue(!tableNames.isEmpty());
     }

@@ -1,17 +1,22 @@
 package com.jte.sync2es.load.es;
 
+import com.jte.sync2es.exception.ShouldNeverHappenException;
+import com.jte.sync2es.extract.impl.KafkaMsgListener;
 import com.jte.sync2es.load.LoadService;
 import com.jte.sync2es.model.es.EsRequest;
 import com.jte.sync2es.model.mysql.TableMeta;
-import com.jte.sync2es.model.mysql.TableRecords;
+import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.client.indices.PutMappingRequest;
+import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import java.io.IOException;
 
+@Slf4j
+@Service
 public class EsLoadServiceImpl implements LoadService {
 
     @Resource
@@ -20,7 +25,22 @@ public class EsLoadServiceImpl implements LoadService {
     @Override
     public int operateData(EsRequest request) throws IOException {
         checkAndCreateStorage(request);
-        return 0;
+        if(KafkaMsgListener.EVENT_TYPE_INSERT.equalsIgnoreCase(request.getOperationType()))
+        {
+            return addData(request);
+        }
+        else if(KafkaMsgListener.EVENT_TYPE_UPDATE.equalsIgnoreCase(request.getOperationType()))
+        {
+            return updateData(request);
+        }
+        else if(KafkaMsgListener.EVENT_TYPE_DELETE.equalsIgnoreCase(request.getOperationType()))
+        {
+            return deleteData(request);
+        }
+        else
+        {
+            throw new ShouldNeverHappenException("unknown operation type:"+request.getOperationType());
+        }
     }
 
     @Override
@@ -53,7 +73,8 @@ public class EsLoadServiceImpl implements LoadService {
         {
             //不存在，创建映射关系
             PutMappingRequest newMapping = new PutMappingRequest();
-            //TODO
+            log.info("add new index mapping fro {}",request.getIndex());
+
         }
         else
         {

@@ -1,6 +1,7 @@
 package com.jte.sync2es.conf;
 
 import com.jte.sync2es.extract.impl.KafkaMsgListener;
+import com.jte.sync2es.load.LoadService;
 import com.jte.sync2es.model.config.KafkaMate;
 import com.jte.sync2es.model.config.Mq;
 import com.jte.sync2es.model.config.Sync2es;
@@ -29,6 +30,9 @@ public class KafkaConfig {
     Sync2es sync2es;
     @Resource
     RecordsTransform transform;
+    @Resource
+    LoadService load;
+
     public static final Set<KafkaMessageListenerContainer> KAFKA_SET= new HashSet<>();
 
     @PostConstruct
@@ -36,7 +40,7 @@ public class KafkaConfig {
         sync2es.getSyncConfig().forEach(sdb->{
             ContainerProperties containerProps = new ContainerProperties(sdb.getMq().getTopicName());
             containerProps.setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
-            containerProps.setMessageListener(new KafkaMsgListener(transform));
+            containerProps.setMessageListener(new KafkaMsgListener(transform,load));
             KafkaMessageListenerContainer<String, String> container = createContainer(sdb.getMq(),containerProps);
             container.setBeanName(sdb.getDbName()+"_"+sdb.getMq().getTopicName());
             container.start();

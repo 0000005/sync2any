@@ -3,6 +3,7 @@ package com.jte.sync2es.extract.impl;
 import com.jte.sync2es.conf.KafkaConfig;
 import com.jte.sync2es.conf.RuleConfigParser;
 import com.jte.sync2es.exception.IllegalDataStructureException;
+import com.jte.sync2es.load.LoadService;
 import com.jte.sync2es.model.es.EsRequest;
 import com.jte.sync2es.model.mq.TcMqMessage;
 import com.jte.sync2es.model.mysql.TableMeta;
@@ -28,8 +29,10 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String,Str
     public static final String EVENT_TYPE_DELETE = "delete";
 
     private RecordsTransform transform;
+    private LoadService load;
 
-    public KafkaMsgListener(RecordsTransform transform) {
+    public KafkaMsgListener(RecordsTransform transform, LoadService load) {
+        this.load = load;
         this.transform = transform;
     }
 
@@ -59,7 +62,7 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String,Str
             //将tableRecords 转化为es的形式
             EsRequest request=transform.transform(tableRecords);
             //将信息同步到es中
-
+            load.operateData(request);
             //at last,we commit this msg.
             acknowledgment.acknowledge();
         }

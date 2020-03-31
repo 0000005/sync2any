@@ -30,21 +30,28 @@ public class RecordsTransform4EsImpl implements RecordsTransform {
         return esRequest;
     }
 
+    /**
+     * 获取对应的参数值。
+     * 当是delete时，参数值应该获取where部分。因为要根据条件（主键）删除数据
+     * 当是update\insert时，参数应该是field部分。因为要修改（根据主键）或插入数据。
+     *
+     * @param records 对应es的一条记录
+     * @return
+     */
     private Map<String, Object> getParameters(TableRecords records){
         Map<String, Object> params= new HashMap<>(70);
 
         List<Map<String,Field>> rows = new ArrayList<>();
-        String eventTypeStr=records.getMqMessage().getEventtypestr();
-        if(KafkaMsgListener.EVENT_TYPE_DELETE.equalsIgnoreCase(eventTypeStr))
+        String eventTypeStr=records.getMqMessage().getEventtypestr();if(KafkaMsgListener.EVENT_TYPE_DELETE.equalsIgnoreCase(eventTypeStr))
         {
             //以where为主
             rows = records.pkRows(records.getWhereRows());
         }
-        else if(KafkaMsgListener.EVENT_TYPE_INSERT.equalsIgnoreCase(eventTypeStr)||
-                KafkaMsgListener.EVENT_TYPE_UPDATE.equalsIgnoreCase(eventTypeStr))
+        else if(KafkaMsgListener.EVENT_TYPE_UPDATE.equalsIgnoreCase(eventTypeStr)||
+                KafkaMsgListener.EVENT_TYPE_INSERT.equalsIgnoreCase(eventTypeStr))
         {
             //以field为主
-            rows = records.pkRows(records.getFieldRows());
+            rows = records.parseToMap(records.getFieldRows());
         }
         if(rows.isEmpty())
         {
