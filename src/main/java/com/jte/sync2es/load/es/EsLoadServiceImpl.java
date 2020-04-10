@@ -1,15 +1,29 @@
 package com.jte.sync2es.load.es;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.jte.sync2es.exception.ShouldNeverHappenException;
 import com.jte.sync2es.extract.impl.KafkaMsgListener;
 import com.jte.sync2es.load.LoadService;
+import com.jte.sync2es.model.es.EsDateType;
 import com.jte.sync2es.model.es.EsRequest;
 import com.jte.sync2es.model.mysql.TableMeta;
+import com.jte.sync2es.util.JsonUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.elasticsearch.action.delete.DeleteRequest;
+import org.elasticsearch.action.delete.DeleteResponse;
+import org.elasticsearch.action.index.IndexRequest;
+import org.elasticsearch.action.index.IndexResponse;
+import org.elasticsearch.action.update.UpdateRequest;
+import org.elasticsearch.action.update.UpdateResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.client.indices.CreateIndexRequest;
+import org.elasticsearch.client.indices.CreateIndexResponse;
 import org.elasticsearch.client.indices.GetIndexRequest;
-import org.elasticsearch.client.indices.PutMappingRequest;
+import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.rest.RestStatus;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
@@ -45,17 +59,38 @@ public class EsLoadServiceImpl implements LoadService {
 
     @Override
     public int addData(EsRequest request) throws IOException {
-
+        IndexRequest addIndex = new IndexRequest(request.getIndex());
+        addIndex.id(request.getDocId());
+        addIndex.source(JsonUtil.objectToJson(request.getParameters()), XContentType.JSON);
+        IndexResponse indexResponse = client.index(addIndex, RequestOptions.DEFAULT);
+        if(indexResponse.status().equals(RestStatus.OK)&&indexResponse.getShardInfo().getSuccessful()>0)
+        {
+            return 1;
+        }
         return 0;
     }
 
     @Override
     public int deleteData(EsRequest request) throws IOException {
+        DeleteRequest deleteIndex = new DeleteRequest(request.getIndex(),request.getDocId());
+        DeleteResponse deleteResponse = client.delete(deleteIndex, RequestOptions.DEFAULT);
+        if(deleteResponse.status().equals(RestStatus.OK)&&deleteResponse.getShardInfo().getSuccessful()>0)
+        {
+            return 1;
+        }
         return 0;
     }
 
     @Override
     public int updateData(EsRequest request) throws IOException {
+        UpdateRequest updateIndex = new UpdateRequest(request.getIndex(),request.getDocId());
+        updateIndex.doc(JsonUtil.objectToJson(request.getParameters()), XContentType.JSON);
+        updateIndex.docAsUpsert(true);
+        UpdateResponse updateResponse = client.update(updateIndex, RequestOptions.DEFAULT);
+        if(updateResponse.status().equals(RestStatus.OK)&&updateResponse.getShardInfo().getSuccessful()>0)
+        {
+            return 1;
+        }
         return 0;
     }
 
@@ -68,18 +103,83 @@ public class EsLoadServiceImpl implements LoadService {
     public void checkAndCreateStorage(EsRequest request) throws IOException {
         GetIndexRequest indexRequest = new GetIndexRequest(request.getIndex());
         TableMeta tableMeta=request.getTableMeta();
+        String existsEvidence="es$"+tableMeta.getDbName()+"$"+tableMeta.getTableName();
+        if(LOAD_STORAGE.contains(existsEvidence)){
+            return;
+        }
         boolean indexExists=client.indices().exists(indexRequest,RequestOptions.DEFAULT);
         if(!indexExists)
         {
+            String mappingJson=generateMappingJson(request);
             //不存在，创建映射关系
-            PutMappingRequest newMapping = new PutMappingRequest();
-            log.info("add new index mapping fro {}",request.getIndex());
-
+            CreateIndexRequest newMapping = new CreateIndexRequest(request.getIndex());
+            newMapping.settings(Settings.builder()
+                    .put("index.number_of_shards", 8)
+                    .put("index.number_of_replicas", 2)
+            );
+            newMapping.mapping(mappingJson, XContentType.JSON);
+            log.info("add new index mapping for {}",request.getIndex());
+            CreateIndexResponse createIndexResponse = client.indices().create(newMapping, RequestOptions.DEFAULT);
+            if(!createIndexResponse.isAcknowledged())
+            {
+                throw new ShouldNeverHappenException("create mapping failed!");
+            }
+            LOAD_STORAGE.add("es$"+tableMeta.getDbName()+"$"+tableMeta.getTableName());
         }
         else
         {
             LOAD_STORAGE.add("es$"+tableMeta.getDbName()+"$"+tableMeta.getTableName());
         }
+    }
+
+    /**
+     * 根据我放从数据库取得的表结构以及用户自己的配置，来创建一个描述index的mapping的字符串
+     * 结构大概如下
+     *   {
+     *     "properties": {
+     *       "age":    { "type": "integer" },
+     *       "email":  {
+     *         "type": "text","fields": {
+     *           "raw": {
+     *             "type":  "keyword"
+     *           }
+     *         }
+     *       },
+     *       "name":   { "type": "text"  }
+     *     }
+     *   }
+     * @param request
+     */
+    public String generateMappingJson(EsRequest request)
+    {
+        ObjectMapper mapper = new ObjectMapper();
+        ObjectNode properties = mapper.createObjectNode();
+        ObjectNode property = mapper.createObjectNode();
+        properties.set("properties",property);
+        TableMeta tableMeta= request.getTableMeta();
+        tableMeta.getAllColumnList().forEach(c->{
+            ObjectNode typeValue=null;
+            if(c.getEsDataType().equals(EsDateType.TEXT.getDataType())||c.getEsDataType().equals(EsDateType.KEYWORD.getDataType()))
+            {
+                ObjectNode rowValue=mapper.createObjectNode().put("type","text");
+                ObjectNode rowFieldsValue=mapper.createObjectNode().set("raw",rowValue);
+                typeValue=mapper.createObjectNode()
+                        .put("type","keyword")
+                        .set("fields",rowFieldsValue);
+            }
+            else if(c.getEsDataType().equals(EsDateType.DATA.getDataType()))
+            {
+                typeValue=mapper.createObjectNode()
+                        .put("type",c.getEsDataType())
+                        .put("format","yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis");
+            }
+            else
+            {
+                typeValue=mapper.createObjectNode().put("type",c.getEsDataType());
+            }
+            property.set(c.getEsColumnName(),typeValue);
+        });
+        return properties.toString();
     }
 
 

@@ -2,7 +2,6 @@ package com.jte.sync2es.extract.impl;
 
 import com.jte.sync2es.conf.KafkaConfig;
 import com.jte.sync2es.conf.RuleConfigParser;
-import com.jte.sync2es.exception.IllegalDataStructureException;
 import com.jte.sync2es.load.LoadService;
 import com.jte.sync2es.model.es.EsRequest;
 import com.jte.sync2es.model.mq.TcMqMessage;
@@ -65,11 +64,6 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String,Str
             load.operateData(request);
             //at last,we commit this msg.
             acknowledgment.acknowledge();
-        }
-        catch (IllegalDataStructureException e)
-        {
-            log.error("structure is not match! stopping to sync this table '{}'!",tableMeta.getTableName(),e);
-            stopListener(data,message);
         }
         catch (Exception e)
         {

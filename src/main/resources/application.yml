@@ -32,7 +32,6 @@ sync2es:
         -
           table: wzh
           map: '{"name":"guestName"}'
-          field-filter: "id,name"
 #      db-name: jte_pms_member
 #      sync-tables: "t_pms_member_order_[0-9]{10},t_pms_member,t_pms_member_type"
 #      rules:

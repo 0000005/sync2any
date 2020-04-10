@@ -2,7 +2,6 @@ package com.jte.sync2es.transform.impl;
 
 import com.jte.sync2es.Tester;
 import com.jte.sync2es.conf.RuleConfigParser;
-import com.jte.sync2es.exception.IllegalDataStructureException;
 import com.jte.sync2es.model.es.EsRequest;
 import com.jte.sync2es.model.mq.TcMqMessage;
 import com.jte.sync2es.model.mysql.TableMeta;
@@ -30,7 +29,7 @@ public class RecordsTransform4EsImplTest extends Tester {
     RuleConfigParser ruleParser;
 
     @Test
-    public void transformUpdateTest() throws IllegalDataStructureException {
+    public void transformUpdateTest() {
         TcMqMessage message =JsonUtil.jsonToPojo(updateMsg,TcMqMessage.class);
         TableMeta tableMeta=RuleConfigParser.RULES_MAP.getIfPresent("test$wzh");
         TableRecords tableRecords=TableRecords.buildRecords(tableMeta,message);
@@ -46,7 +45,7 @@ public class RecordsTransform4EsImplTest extends Tester {
 
 
     @Test
-    public void transformDeleteTest() throws IllegalDataStructureException {
+    public void transformDeleteTest() {
         TcMqMessage message =JsonUtil.jsonToPojo(deleteMsg,TcMqMessage.class);
         TableMeta tableMeta=RuleConfigParser.RULES_MAP.getIfPresent("test$wzh");
         TableRecords tableRecords=TableRecords.buildRecords(tableMeta,message);
@@ -61,7 +60,7 @@ public class RecordsTransform4EsImplTest extends Tester {
     }
 
     @Test
-    public void transformInsertTest() throws IllegalDataStructureException {
+    public void transformInsertTest() {
         TcMqMessage message =JsonUtil.jsonToPojo(insertMsg,TcMqMessage.class);
         TableMeta tableMeta=RuleConfigParser.RULES_MAP.getIfPresent("test$wzh");
         TableRecords tableRecords=TableRecords.buildRecords(tableMeta,message);

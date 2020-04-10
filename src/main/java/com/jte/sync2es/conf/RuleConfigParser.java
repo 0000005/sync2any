@@ -150,6 +150,10 @@ public class RuleConfigParser {
             case Types.DATE:
                 columnMeta.setEsDataType(EsDateType.DATA.getDataType());
                 break;
+            // datetime >date
+            case Types.TIMESTAMP:
+                columnMeta.setEsDataType(EsDateType.DATA.getDataType());
+                break;
             // other --> text
             default:
                 columnMeta.setEsDataType(EsDateType.TEXT.getDataType());
@@ -168,7 +172,7 @@ public class RuleConfigParser {
         else
         {
             //默认index命名规则：dbName-tableName
-            tableMeta.setEsIndexName(tableMeta.getTableName().toLowerCase()+"-"+tableMeta.getTableName());
+            tableMeta.setEsIndexName(tableMeta.getDbName().toLowerCase()+"-"+tableMeta.getTableName().toLowerCase());
         }
         if(StringUtils.isNotBlank(rule.getFieldFilter()))
         {

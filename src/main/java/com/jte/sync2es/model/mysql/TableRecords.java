@@ -15,10 +15,10 @@
  */
 package com.jte.sync2es.model.mysql;
 
-import com.jte.sync2es.exception.IllegalDataStructureException;
 import com.jte.sync2es.exception.ShouldNeverHappenException;
 import com.jte.sync2es.extract.impl.KafkaMsgListener;
 import com.jte.sync2es.model.mq.TcMqMessage;
+import com.jte.sync2es.util.DbUtils;
 import com.jte.sync2es.util.JsonUtil;
 import lombok.extern.slf4j.Slf4j;
 
@@ -205,7 +205,7 @@ public class TableRecords {
      * @return the table records
      * @throws SQLException the sql exception
      */
-    public static TableRecords buildRecords(TableMeta meta, TcMqMessage mqMessage) throws IllegalDataStructureException {
+    public static TableRecords buildRecords(TableMeta meta, TcMqMessage mqMessage) {
         if(Objects.isNull(meta))
         {
             throw new IllegalArgumentException("TableMeta is null");
@@ -220,19 +220,16 @@ public class TableRecords {
 
         if(KafkaMsgListener.EVENT_TYPE_DELETE.equals(mqMessage.getEventtypestr())&&whereSize!=tableColumnSize)
         {
-            log.error("meta:{} mqMessage:{}",JsonUtil.objectToJson(meta),JsonUtil.objectToJson(mqMessage));
-            throw new IllegalDataStructureException("column can't match when delete! tableName:"+meta.getTableName());
+            log.warn("column can't match when delete! tableName:{} meta:{} mqMessage:{}",meta.getTableName(),JsonUtil.objectToJson(meta),JsonUtil.objectToJson(mqMessage));
         }
         else if(KafkaMsgListener.EVENT_TYPE_INSERT.equals(mqMessage.getEventtypestr())&&fieldSize!=tableColumnSize)
         {
-            log.error("meta:{} mqMessage:{}",JsonUtil.objectToJson(meta),JsonUtil.objectToJson(mqMessage));
-            throw new IllegalDataStructureException("column can't match when delete! tableName:"+meta.getTableName());
+            log.error("column can't match when delete! tableName:{} meta:{} mqMessage:{}",meta.getTableName(),JsonUtil.objectToJson(meta),JsonUtil.objectToJson(mqMessage));
         }
         else if(KafkaMsgListener.EVENT_TYPE_UPDATE.equals(mqMessage.getEventtypestr())&&
                 (fieldSize!=tableColumnSize||whereSize!=tableColumnSize))
         {
-            log.error("meta:{} mqMessage:{}",JsonUtil.objectToJson(meta),JsonUtil.objectToJson(mqMessage));
-            throw new IllegalDataStructureException("column can't match when delete! tableName:"+meta.getTableName());
+            log.error("column can't match when delete! tableName:{} meta:{} mqMessage:{}",meta.getTableName(),JsonUtil.objectToJson(meta),JsonUtil.objectToJson(mqMessage));
         }
 
         boolean shouldCalculateWhere=KafkaMsgListener.EVENT_TYPE_DELETE.equals(mqMessage.getEventtypestr())||KafkaMsgListener.EVENT_TYPE_UPDATE.equals(mqMessage.getEventtypestr());
@@ -254,7 +251,7 @@ public class TableRecords {
                     whereField.setKeyType(KeyType.PRIMARY_KEY);
                 }
                 whereField.setType(currColumn.getDataType());
-                whereField.setValue(whereValue);
+                whereField.setValue(DbUtils.delQuote(whereValue));
                 whereFields.add(whereField);
             }
 
@@ -268,7 +265,7 @@ public class TableRecords {
                     fieldField.setKeyType(KeyType.PRIMARY_KEY);
                 }
                 fieldField.setType(currColumn.getDataType());
-                fieldField.setValue(fieldValue);
+                fieldField.setValue(DbUtils.delQuote(fieldValue));
                 fieldFields.add(fieldField);
             }
         }
