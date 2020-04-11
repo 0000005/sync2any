@@ -10,6 +10,7 @@ import com.jte.sync2es.model.es.EsRequest;
 import com.jte.sync2es.model.mysql.TableMeta;
 import com.jte.sync2es.util.JsonUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.delete.DeleteResponse;
 import org.elasticsearch.action.index.IndexRequest;
@@ -28,6 +29,7 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import java.io.IOException;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -91,6 +93,12 @@ public class EsLoadServiceImpl implements LoadService {
         {
             return 1;
         }
+        return 0;
+    }
+
+    @Override
+    public int batchAdd(List<EsRequest> requestList) throws IOException {
+        BulkRequest request = new BulkRequest();
         return 0;
     }
 

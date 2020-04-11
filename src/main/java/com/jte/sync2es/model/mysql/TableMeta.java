@@ -28,6 +28,24 @@ public class TableMeta {
     private String tableName;
     private String esIndexName;
     private String dbName;
+    /**
+     * the local time of last sync
+     */
+    private long lastSyncTime=0;
+
+    /**
+     * this time is refer to the update time of source data(tdsql).
+     * delayTime = lastSyncTime - lastDataManipulateTime
+     */
+    private long lastDataManipulateTime=0;
+
+    /**
+     *
+     * 0: sync is stopped
+     * 1: loading origin data
+     * 2: sync is running
+     */
+    private String state="";
 
     /**
      * key: column name
@@ -43,6 +61,21 @@ public class TableMeta {
      */
     private Map<String, IndexMeta> allIndexes = new LinkedHashMap<String, IndexMeta>();
 
+    public long getLastSyncTime() {
+        return lastSyncTime;
+    }
+
+    public void setLastSyncTime(long lastSyncTime) {
+        this.lastSyncTime = lastSyncTime;
+    }
+
+    public long getLastDataManipulateTime() {
+        return lastDataManipulateTime;
+    }
+
+    public void setLastDataManipulateTime(long lastDataManipulateTime) {
+        this.lastDataManipulateTime = lastDataManipulateTime;
+    }
 
     public String getEsIndexName() {
         return esIndexName;

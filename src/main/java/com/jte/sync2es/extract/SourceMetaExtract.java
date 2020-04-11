@@ -4,7 +4,7 @@ import com.jte.sync2es.model.mysql.TableMeta;
 
 import java.util.List;
 
-public interface SourceExtract {
+public interface SourceMetaExtract {
     TableMeta getTableMate(String dbName,String tableName);
     List<String> getAllTableName(String dbName);
 }

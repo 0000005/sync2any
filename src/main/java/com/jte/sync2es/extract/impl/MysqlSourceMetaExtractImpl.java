@@ -1,7 +1,7 @@
 package com.jte.sync2es.extract.impl;
 
 import com.jte.sync2es.exception.ShouldNeverHappenException;
-import com.jte.sync2es.extract.SourceExtract;
+import com.jte.sync2es.extract.SourceMetaExtract;
 import com.jte.sync2es.model.mysql.ColumnMeta;
 import com.jte.sync2es.model.mysql.IndexMeta;
 import com.jte.sync2es.model.mysql.IndexType;
@@ -18,10 +18,9 @@ import java.util.Map;
 import java.util.Objects;
 
 @Service
-public class MysqlSourceExtractImpl implements SourceExtract {
+public class MysqlSourceMetaExtractImpl implements SourceMetaExtract {
 
     public final String GET_ALL_TABLES_SQL="select table_name from information_schema.tables where table_schema=? and table_type='base table'";
-    public final String GET_DB_NAME_SQL="select database() ";
 
     @Autowired
     @Qualifier("allTemplate")

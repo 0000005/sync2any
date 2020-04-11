@@ -28,4 +28,5 @@ public interface RecordsTransform {
      * @return
      */
     EsRequest transform(TableRecords records);
+
 }

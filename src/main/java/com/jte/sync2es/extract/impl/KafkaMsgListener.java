@@ -15,6 +15,7 @@ import org.springframework.kafka.listener.AcknowledgingMessageListener;
 import org.springframework.kafka.listener.KafkaMessageListenerContainer;
 import org.springframework.kafka.support.Acknowledgment;
 
+import java.math.BigDecimal;
 import java.util.Objects;
 
 /**
@@ -62,6 +63,10 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String,Str
             EsRequest request=transform.transform(tableRecords);
             //将信息同步到es中
             load.operateData(request);
+            //记录时间
+            long dataUpdateTime=new BigDecimal(message.getBegintime()).multiply(new BigDecimal(1000)).longValue();
+            tableMeta.setLastDataManipulateTime(dataUpdateTime);
+            tableMeta.setLastSyncTime(System.currentTimeMillis());
             //at last,we commit this msg.
             acknowledgment.acknowledge();
         }

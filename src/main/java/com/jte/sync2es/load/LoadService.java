@@ -1,10 +1,10 @@
 package com.jte.sync2es.load;
 
 import com.jte.sync2es.model.es.EsRequest;
-import com.jte.sync2es.model.mysql.TableRecords;
 
 import java.io.IOException;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public interface LoadService {
@@ -19,5 +19,6 @@ public interface LoadService {
     int addData(EsRequest request) throws IOException;
     int deleteData(EsRequest request) throws IOException;
     int updateData(EsRequest request) throws IOException;
+    int batchAdd(List<EsRequest> requestList) throws IOException;
     void checkAndCreateStorage(EsRequest request) throws IOException;
 }

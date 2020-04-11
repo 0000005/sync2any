@@ -40,11 +40,16 @@ public class TableRecords {
     /**
      * 对应mq消息中的where属性
      */
-    private List<Row> whereRows = new ArrayList<Row>();
+    private List<Row> whereRows = new ArrayList<>();
     /**
      * 对应mq消息中的field属性
      */
-    private List<Row> fieldRows = new ArrayList<Row>();
+    private List<Row> fieldRows = new ArrayList<>();
+
+    /**
+     * 提取origin data里面的值
+     */
+    private List<Row> originRows = new ArrayList<>();
 
     private TcMqMessage mqMessage;
 
@@ -98,6 +103,14 @@ public class TableRecords {
 
     public void setFieldRows(List<Row> fieldRows) {
         this.fieldRows = fieldRows;
+    }
+
+    public List<Row> getOriginRows() {
+        return originRows;
+    }
+
+    public void setOriginRows(List<Row> originRows) {
+        this.originRows = originRows;
     }
 
     /**

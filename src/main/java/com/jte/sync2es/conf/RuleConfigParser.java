@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.jte.sync2es.exception.ShouldNeverHappenException;
-import com.jte.sync2es.extract.SourceExtract;
+import com.jte.sync2es.extract.SourceMetaExtract;
 import com.jte.sync2es.model.config.MysqlDb;
 import com.jte.sync2es.model.config.Rule;
 import com.jte.sync2es.model.config.Sync2es;
@@ -44,7 +44,7 @@ public class RuleConfigParser {
     public static final Cache<String, TableMeta> RULES_MAP = CacheBuilder.newBuilder().build();
 
     @Resource
-    SourceExtract sourceExtract;
+    SourceMetaExtract sourceMetaExtract;
     @Resource
     Sync2es sync2es;
     @Resource
@@ -53,7 +53,7 @@ public class RuleConfigParser {
     public void initRules() {
         mysqlDb.getDatasources().forEach(db->{
             //获取所有的表名
-            List<String> tableNameList=sourceExtract.getAllTableName(db.getDbName());
+            List<String> tableNameList= sourceMetaExtract.getAllTableName(db.getDbName());
             //找到当前数据库的所有规则
             List<SyncConfig> currSyncConfigList=sync2es.getSyncConfig().stream()
                     .filter(s->db.getDbName().equalsIgnoreCase(s.getDbName()))
@@ -81,7 +81,7 @@ public class RuleConfigParser {
                         Rule rule=config.getRules().stream()
                                 .filter(tr -> Pattern.matches(tr.getTable(),realTableName))
                                 .findFirst().orElse(new Rule());
-                        tableMeta=sourceExtract.getTableMate(db.getDbName(),realTableName);
+                        tableMeta= sourceMetaExtract.getTableMate(db.getDbName(),realTableName);
                         //填充匹配规则
                         parseColumnMeta(tableMeta,rule);
                         RULES_MAP.put(config.getDbName()+"$"+realTableName,tableMeta);

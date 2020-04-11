@@ -31,7 +31,7 @@ public class RecordsTransform4EsImpl implements RecordsTransform {
     }
 
     /**
-     * 获取对应的参数值。
+     * 获取对应的参数值。key为列名，value为值
      * 当是delete时，参数值应该获取where部分。因为要根据条件（主键）删除数据
      * 当是update\insert时，参数应该是field部分。因为要修改（根据主键）或插入数据。
      *
@@ -57,14 +57,14 @@ public class RecordsTransform4EsImpl implements RecordsTransform {
         {
             throw new ShouldNeverHappenException("can't find parameters!");
         }
-        Map<String,Field> pkRow=rows.get(0);
+        Map<String,Field> currRow=rows.get(0);
         Map<String, ColumnMeta> columnMetaMap=records.getTableMeta().getAllColumnMap();
-        for(String columnName:pkRow.keySet())
+        for(String columnName:currRow.keySet())
         {
             ColumnMeta columnMeta=columnMetaMap.get(columnName);
             if(columnMeta.isInclude())
             {
-                params.put(columnMeta.getEsColumnName(),pkRow.get(columnName).getValue());
+                params.put(columnMeta.getEsColumnName(),currRow.get(columnName).getValue());
             }
         }
         return params;
