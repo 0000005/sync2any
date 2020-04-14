@@ -2,6 +2,10 @@ package com.jte.sync2es.util;
 
 import org.apache.commons.lang3.StringUtils;
 
+import java.net.URI;
+import java.util.HashMap;
+import java.util.Map;
+
 public class DbUtils {
     /**
      * 去处字符串首尾的单引号
@@ -22,16 +26,20 @@ public class DbUtils {
     }
 
     /**
-     * 去处字符串首尾的单引号
-     * @param origin
+     * 从数据库配置信息中解析出 host、端口等信息
+     * @param url
      * @return
      */
-    public static Object delQuote(Object origin)
+    public static Map<String,String> getParamFromUrl(String url)
     {
-        if(origin instanceof String)
-        {
-            return delQuote(((String)origin));
-        }
-        return origin;
+        Map<String,String> param= new HashMap<>();
+        String cleanURI = url.substring(5);
+        URI uri = URI.create(cleanURI);
+        param.put("type",uri.getScheme());
+        param.put("host",uri.getHost());
+        param.put("port",new Integer(uri.getPort()).toString());
+        param.put("param",uri.getPath());
+        return param;
     }
+
 }

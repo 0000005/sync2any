@@ -11,6 +11,7 @@ import com.jte.sync2es.model.mysql.TableMeta;
 import com.jte.sync2es.util.JsonUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.action.bulk.BulkRequest;
+import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.delete.DeleteResponse;
 import org.elasticsearch.action.index.IndexRequest;
@@ -19,11 +20,14 @@ import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.action.update.UpdateResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.client.core.CountRequest;
+import org.elasticsearch.client.core.CountResponse;
 import org.elasticsearch.client.indices.CreateIndexRequest;
 import org.elasticsearch.client.indices.CreateIndexResponse;
 import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.rest.RestStatus;
 import org.springframework.stereotype.Service;
 
@@ -40,7 +44,7 @@ public class EsLoadServiceImpl implements LoadService {
 
     @Override
     public int operateData(EsRequest request) throws IOException {
-        checkAndCreateStorage(request);
+        checkAndCreateStorage(request.getTableMeta());
         if(KafkaMsgListener.EVENT_TYPE_INSERT.equalsIgnoreCase(request.getOperationType()))
         {
             return addData(request);
@@ -98,46 +102,72 @@ public class EsLoadServiceImpl implements LoadService {
 
     @Override
     public int batchAdd(List<EsRequest> requestList) throws IOException {
-        BulkRequest request = new BulkRequest();
-        return 0;
+        BulkRequest bulkRequest = new BulkRequest();
+        requestList.forEach(r->{
+            IndexRequest addIndex = new IndexRequest(r.getIndex());
+            addIndex.id(r.getDocId());
+            addIndex.source(JsonUtil.objectToJson(r.getParameters()), XContentType.JSON);
+            bulkRequest.add(addIndex);
+        });
+        BulkResponse bulkResponse = client.bulk(bulkRequest, RequestOptions.DEFAULT);
+        if (bulkResponse.hasFailures()) {
+            return 0;
+        }
+        return requestList.size();
+    }
+
+    @Override
+    public Long countData(String esIndex) throws IOException {
+        if(!isIndexExists(esIndex))
+        {
+            return 0L;
+        }
+        CountRequest countRequest = new CountRequest(esIndex);
+        countRequest.query(QueryBuilders.matchAllQuery());
+        CountResponse countResponse = client.count(countRequest, RequestOptions.DEFAULT);
+        return countResponse.getCount();
     }
 
     /**
-     * index命名规则：dbName-tableName
-     * @param request
+     * es index命名规则：dbName-tableName
+     * @param tableMeta
      * @return
      */
     @Override
-    public void checkAndCreateStorage(EsRequest request) throws IOException {
-        GetIndexRequest indexRequest = new GetIndexRequest(request.getIndex());
-        TableMeta tableMeta=request.getTableMeta();
+    public void checkAndCreateStorage(TableMeta tableMeta) throws IOException {
+        String indexName=tableMeta.getEsIndexName();
         String existsEvidence="es$"+tableMeta.getDbName()+"$"+tableMeta.getTableName();
         if(LOAD_STORAGE.contains(existsEvidence)){
             return;
         }
-        boolean indexExists=client.indices().exists(indexRequest,RequestOptions.DEFAULT);
+        boolean indexExists= isIndexExists(indexName);
         if(!indexExists)
         {
-            String mappingJson=generateMappingJson(request);
+            String mappingJson=generateMappingJson(tableMeta);
             //不存在，创建映射关系
-            CreateIndexRequest newMapping = new CreateIndexRequest(request.getIndex());
+            CreateIndexRequest newMapping = new CreateIndexRequest(indexName);
             newMapping.settings(Settings.builder()
                     .put("index.number_of_shards", 8)
                     .put("index.number_of_replicas", 2)
             );
             newMapping.mapping(mappingJson, XContentType.JSON);
-            log.info("add new index mapping for {}",request.getIndex());
+            log.info("add new index mapping for {}",indexName);
             CreateIndexResponse createIndexResponse = client.indices().create(newMapping, RequestOptions.DEFAULT);
             if(!createIndexResponse.isAcknowledged())
             {
                 throw new ShouldNeverHappenException("create mapping failed!");
             }
-            LOAD_STORAGE.add("es$"+tableMeta.getDbName()+"$"+tableMeta.getTableName());
+            LOAD_STORAGE.add(existsEvidence);
         }
         else
         {
-            LOAD_STORAGE.add("es$"+tableMeta.getDbName()+"$"+tableMeta.getTableName());
+            LOAD_STORAGE.add(existsEvidence);
         }
+    }
+
+    private boolean isIndexExists(String indexName) throws IOException {
+        GetIndexRequest indexRequest = new GetIndexRequest(indexName);
+        return client.indices().exists(indexRequest,RequestOptions.DEFAULT);
     }
 
     /**
@@ -156,15 +186,14 @@ public class EsLoadServiceImpl implements LoadService {
      *       "name":   { "type": "text"  }
      *     }
      *   }
-     * @param request
+     * @param tableMeta
      */
-    public String generateMappingJson(EsRequest request)
+    public String generateMappingJson(TableMeta tableMeta)
     {
         ObjectMapper mapper = new ObjectMapper();
         ObjectNode properties = mapper.createObjectNode();
         ObjectNode property = mapper.createObjectNode();
         properties.set("properties",property);
-        TableMeta tableMeta= request.getTableMeta();
         tableMeta.getAllColumnList().forEach(c->{
             ObjectNode typeValue=null;
             if(c.getEsDataType().equals(EsDateType.TEXT.getDataType())||c.getEsDataType().equals(EsDateType.KEYWORD.getDataType()))

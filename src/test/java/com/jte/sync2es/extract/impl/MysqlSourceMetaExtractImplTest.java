@@ -32,4 +32,10 @@ public class MysqlSourceMetaExtractImplTest extends Tester {
         Assert.assertTrue(!tableNames.isEmpty());
     }
 
+    @Test
+    public void getDataCountTest() {
+        Long count=sourceMetaExtract.getDataCount("test","wzh");
+        Assert.assertTrue(count>0);
+    }
+
 }

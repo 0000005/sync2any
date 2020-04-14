@@ -1,5 +1,7 @@
 package com.jte.sync2es.core;
 
+import com.jte.sync2es.model.core.Result;
+
 /**
  * 响应结果生成工具
  */

@@ -16,6 +16,8 @@
 package com.jte.sync2es.model.mysql;
 
 
+import com.jte.sync2es.model.core.SyncState;
+
 import java.util.*;
 import java.util.Map.Entry;
 
@@ -29,6 +31,15 @@ public class TableMeta {
     private String esIndexName;
     private String dbName;
     /**
+     * kafka topic name
+     */
+    private String topicName;
+    /**
+     * kafka group name
+     */
+    private String topicGroup;
+
+    /**
      * the local time of last sync
      */
     private long lastSyncTime=0;
@@ -41,16 +52,16 @@ public class TableMeta {
 
     /**
      *
-     * 0: sync is stopped
-     * 1: loading origin data
-     * 2: sync is running
+     * 0: waiting to start
+     * 1: sync is stopped
+     * 2: loading origin data
+     * 3: sync is running
      */
-    private String state="";
+    private SyncState state=SyncState.WAITING;
 
     /**
      * key: column name
      */
-
     private Map<String, ColumnMeta> allColumnMap = new LinkedHashMap<String, ColumnMeta>();
     /**
      * list of column,make sure the order of item.
@@ -60,6 +71,31 @@ public class TableMeta {
      * key: index name
      */
     private Map<String, IndexMeta> allIndexes = new LinkedHashMap<String, IndexMeta>();
+
+
+    public SyncState getState() {
+        return state;
+    }
+
+    public void setState(SyncState state) {
+        this.state = state;
+    }
+
+    public String getTopicName() {
+        return topicName;
+    }
+
+    public void setTopicName(String topicName) {
+        this.topicName = topicName;
+    }
+
+    public String getTopicGroup() {
+        return topicGroup;
+    }
+
+    public void setTopicGroup(String topicGroup) {
+        this.topicGroup = topicGroup;
+    }
 
     public long getLastSyncTime() {
         return lastSyncTime;

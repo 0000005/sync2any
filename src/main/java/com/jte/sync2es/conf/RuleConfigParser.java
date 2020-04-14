@@ -71,20 +71,24 @@ public class RuleConfigParser {
                     //接下来解析rule
                     for(String realTableName:matchTableName)
                     {
+                        String key=config.getDbName()+"$"+realTableName;
                         //寻找到了匹配的表
-                        TableMeta tableMeta=RULES_MAP.getIfPresent(realTableName);
+                        TableMeta tableMeta=RULES_MAP.getIfPresent(key);
                         if(Objects.nonNull(tableMeta) )
                         {
                             continue;
                         }
+                        tableMeta.setTopicName(config.getMq().getTopicName());
+                        tableMeta.setTopicGroup(config.getMq().getTopicGroup());
                         //该表还未解析规则，寻找规则
                         Rule rule=config.getRules().stream()
                                 .filter(tr -> Pattern.matches(tr.getTable(),realTableName))
                                 .findFirst().orElse(new Rule());
-                        tableMeta= sourceMetaExtract.getTableMate(db.getDbName(),realTableName);
+                        tableMeta = sourceMetaExtract.getTableMate(db.getDbName(),realTableName);
+
                         //填充匹配规则
                         parseColumnMeta(tableMeta,rule);
-                        RULES_MAP.put(config.getDbName()+"$"+realTableName,tableMeta);
+                        RULES_MAP.put(key,tableMeta);
                     }
                 }
             }
@@ -241,6 +245,16 @@ public class RuleConfigParser {
                     columnMeta.setEsColumnName(mapValue);
                     mapDataTypeOfEs(columnMeta);
                 }
+            }
+        }
+        else
+        {
+            for(String columnName:tableMeta.getAllColumnMap().keySet())
+            {
+                ColumnMeta columnMeta=tableMeta.getAllColumnMap().get(columnName);
+                //未配置规则，统一化为小写
+                columnMeta.setEsColumnName(columnName.toLowerCase());
+                mapDataTypeOfEs(columnMeta);
             }
         }
         return tableMeta;

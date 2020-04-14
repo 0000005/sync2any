@@ -21,6 +21,7 @@ import java.util.Objects;
 public class MysqlSourceMetaExtractImpl implements SourceMetaExtract {
 
     public final String GET_ALL_TABLES_SQL="select table_name from information_schema.tables where table_schema=? and table_type='base table'";
+    public final String GET_COUNT_SQL="select count(*) from #{table_name}; ";
 
     @Autowired
     @Qualifier("allTemplate")
@@ -45,6 +46,15 @@ public class MysqlSourceMetaExtractImpl implements SourceMetaExtract {
                 DataSourceUtils.releaseConnection(conn,jdbcTemplate.getDataSource());
             }
         }
+    }
+
+    @Override
+    public Long getDataCount(String dbName, String tableName) {
+        JdbcTemplate jdbcTemplate=getJdbcTemplate(dbName);
+        String sql = new String(GET_COUNT_SQL);
+        sql=sql.replace("#{table_name}",tableName);
+        Long count=jdbcTemplate.queryForObject(sql,Long.class);
+        return count;
     }
 
     @Override

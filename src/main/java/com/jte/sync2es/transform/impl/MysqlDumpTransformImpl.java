@@ -1,5 +1,6 @@
 package com.jte.sync2es.transform.impl;
 
+import com.alibaba.druid.sql.ast.SQLExpr;
 import com.alibaba.druid.sql.ast.SQLStatement;
 import com.alibaba.druid.sql.ast.statement.SQLInsertStatement;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlInsertStatement;
@@ -8,12 +9,14 @@ import com.jte.sync2es.model.es.EsRequest;
 import com.jte.sync2es.model.mysql.ColumnMeta;
 import com.jte.sync2es.model.mysql.TableMeta;
 import com.jte.sync2es.transform.DumpTransform;
+import com.jte.sync2es.util.DbUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.jte.sync2es.extract.impl.KafkaMsgListener.EVENT_TYPE_INSERT;
 
@@ -30,8 +33,23 @@ public class MysqlDumpTransformImpl implements DumpTransform {
     }
 
     private String getDocId(SQLInsertStatement.ValuesClause values, TableMeta tableMeta) {
-
-        return null;
+        StringBuilder docId=new StringBuilder();
+        //主键字段名
+        List<String> pkColumnName=tableMeta.getPrimaryKeyOnlyName();
+        List<ColumnMeta> pkColumnMetaList=tableMeta.getAllColumnList()
+                .stream().filter(c->pkColumnName.contains(c.getColumnName()))
+                .collect(Collectors.toList());
+        List<SQLExpr> valueList=values.getValues();
+        for(int i =0;i<pkColumnMetaList.size();i++)
+        {
+            int valueIndex=pkColumnName.indexOf(pkColumnMetaList.get(i).getColumnName());
+            if(i>0)
+            {
+                docId.append("_");
+            }
+            docId.append(DbUtils.delQuote(valueList.get(valueIndex).toString()));
+        }
+        return docId.toString();
     }
 
     /**
@@ -42,15 +60,22 @@ public class MysqlDumpTransformImpl implements DumpTransform {
      */
     private Map<String, Object> getParameters(SQLInsertStatement.ValuesClause values, TableMeta tableMeta){
         Map<String, Object> params= new HashMap<>(70);
-        Map<String, ColumnMeta> columnMetaMap=tableMeta.getAllColumnMap();
-//        for(String columnName:values.getValues())
-//        {
-//            ColumnMeta columnMeta=columnMetaMap.get(columnName);
-//            if(columnMeta.isInclude())
-//            {
-//                params.put(columnMeta.getEsColumnName(),pkRow.get(columnName).getValue());
-//            }
-//        }
+        List<ColumnMeta> columnMetaList=tableMeta.getAllColumnList();
+        List<SQLExpr> valueList=values.getValues();
+        for(int i =0;i<valueList.size();i++)
+        {
+            SQLExpr currValue=valueList.get(i);
+            ColumnMeta columnMeta= columnMetaList.get(i);
+            if(columnMeta.isInclude())
+            {
+                String value=currValue.toString();
+                if("NULL".equals(value)&&Objects.isNull(currValue.computeDataType()))
+                {
+                    value=null;
+                }
+                params.put(columnMeta.getEsColumnName(),value);
+            }
+        }
         return params;
     }
 

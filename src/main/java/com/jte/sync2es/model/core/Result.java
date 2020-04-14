@@ -1,5 +1,6 @@
-package com.jte.sync2es.core;
+package com.jte.sync2es.model.core;
 
+import com.jte.sync2es.core.ResultCode;
 import com.jte.sync2es.util.JsonUtil;
 
 /**

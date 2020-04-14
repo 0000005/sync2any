@@ -33,6 +33,7 @@ public class KafkaConfig {
     @Resource
     LoadService load;
 
+
     public static final Set<KafkaMessageListenerContainer> KAFKA_SET= new HashSet<>();
 
     @PostConstruct
@@ -42,7 +43,7 @@ public class KafkaConfig {
             containerProps.setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
             containerProps.setMessageListener(new KafkaMsgListener(transform,load));
             KafkaMessageListenerContainer<String, String> container = createContainer(sdb.getMq(),containerProps);
-            container.setBeanName(sdb.getDbName()+"_"+sdb.getMq().getTopicName());
+            container.setBeanName(sdb.getDbName()+"_"+sdb.getMq().getTopicGroup()+"_"+sdb.getMq().getTopicName());
             container.start();
             KAFKA_SET.add(container);
         });
@@ -64,6 +65,11 @@ public class KafkaConfig {
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         return props;
+    }
+
+    public static KafkaMessageListenerContainer getKafkaListener(String dbName,String topicGroup,String topicName){
+        String beanName=dbName+"_"+topicGroup+"_"+topicName;
+        return KAFKA_SET.stream().filter(k->k.getBeanName().equals(beanName)).findFirst().orElse(null);
     }
 
 }

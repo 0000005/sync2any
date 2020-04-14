@@ -1,6 +1,7 @@
 package com.jte.sync2es.load;
 
 import com.jte.sync2es.model.es.EsRequest;
+import com.jte.sync2es.model.mysql.TableMeta;
 
 import java.io.IOException;
 import java.util.HashSet;
@@ -20,5 +21,6 @@ public interface LoadService {
     int deleteData(EsRequest request) throws IOException;
     int updateData(EsRequest request) throws IOException;
     int batchAdd(List<EsRequest> requestList) throws IOException;
-    void checkAndCreateStorage(EsRequest request) throws IOException;
+    Long countData(String esIndex) throws IOException;
+    void checkAndCreateStorage(TableMeta tableMeta) throws IOException;
 }

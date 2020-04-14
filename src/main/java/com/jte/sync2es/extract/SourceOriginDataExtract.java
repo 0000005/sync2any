@@ -3,6 +3,7 @@ package com.jte.sync2es.extract;
 import com.jte.sync2es.model.mysql.TableMeta;
 
 import java.io.File;
+import java.sql.SQLException;
 
 /**
  * 提取源中的初始数据
@@ -14,5 +15,5 @@ public interface SourceOriginDataExtract {
      * @param tableMeta
      * @return dump出来的数据文件地址
      */
-    File dumpData(TableMeta tableMeta);
+    File dumpData(TableMeta tableMeta) throws SQLException, IllegalAccessException;
 }

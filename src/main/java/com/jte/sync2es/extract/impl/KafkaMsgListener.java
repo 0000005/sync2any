@@ -3,6 +3,7 @@ package com.jte.sync2es.extract.impl;
 import com.jte.sync2es.conf.KafkaConfig;
 import com.jte.sync2es.conf.RuleConfigParser;
 import com.jte.sync2es.load.LoadService;
+import com.jte.sync2es.model.core.SyncState;
 import com.jte.sync2es.model.es.EsRequest;
 import com.jte.sync2es.model.mq.TcMqMessage;
 import com.jte.sync2es.model.mysql.TableMeta;
@@ -74,6 +75,7 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String,Str
         {
             log.error("fatal error! stopping to sync this table '{}'!",tableMeta.getTableName(),e);
             stopListener(data,message);
+            tableMeta.setState(SyncState.STOPPED);
         }
     }
 
