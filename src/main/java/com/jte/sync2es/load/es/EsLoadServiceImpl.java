@@ -165,7 +165,7 @@ public class EsLoadServiceImpl implements LoadService {
         }
     }
 
-    private boolean isIndexExists(String indexName) throws IOException {
+    public boolean isIndexExists(String indexName) throws IOException {
         GetIndexRequest indexRequest = new GetIndexRequest(indexName);
         return client.indices().exists(indexRequest,RequestOptions.DEFAULT);
     }

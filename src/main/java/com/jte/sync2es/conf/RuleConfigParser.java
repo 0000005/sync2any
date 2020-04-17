@@ -55,7 +55,7 @@ public class RuleConfigParser {
             //获取所有的表名
             List<String> tableNameList= sourceMetaExtract.getAllTableName(db.getDbName());
             //找到当前数据库的所有规则
-            List<SyncConfig> currSyncConfigList=sync2es.getSyncConfig().stream()
+            List<SyncConfig> currSyncConfigList=sync2es.getSyncConfigList().stream()
                     .filter(s->db.getDbName().equalsIgnoreCase(s.getDbName()))
                     .collect(Collectors.toList());
             for(int r=0;r<currSyncConfigList.size();r++)
@@ -78,13 +78,13 @@ public class RuleConfigParser {
                         {
                             continue;
                         }
-                        tableMeta.setTopicName(config.getMq().getTopicName());
-                        tableMeta.setTopicGroup(config.getMq().getTopicGroup());
                         //该表还未解析规则，寻找规则
                         Rule rule=config.getRules().stream()
                                 .filter(tr -> Pattern.matches(tr.getTable(),realTableName))
                                 .findFirst().orElse(new Rule());
                         tableMeta = sourceMetaExtract.getTableMate(db.getDbName(),realTableName);
+                        tableMeta.setTopicName(config.getMq().getTopicName());
+                        tableMeta.setTopicGroup(config.getMq().getTopicGroup());
 
                         //填充匹配规则
                         parseColumnMeta(tableMeta,rule);
@@ -94,6 +94,15 @@ public class RuleConfigParser {
             }
         });
 
+    }
+
+    //TODO
+    private void checkConfig()
+    {
+        //1、mysqldump必填
+        //2、mysql datasource必填
+        //2、kafka必填
+        //2、es必填
     }
 
     private void checkEsDataType(String dataType){

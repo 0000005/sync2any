@@ -10,7 +10,11 @@ import java.util.List;
 @Data
 public class Sync2es {
     /**
+     * "mysqldump" command path
+     */
+    private String mysqldump;
+    /**
      *  which mysql database need to sync.
      */
-    private List<SyncConfig> syncConfig;
+    private List<SyncConfig> syncConfigList;
 }

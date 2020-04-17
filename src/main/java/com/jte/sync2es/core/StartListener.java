@@ -1,6 +1,7 @@
 package com.jte.sync2es.core;
 
 import com.jte.sync2es.conf.KafkaConfig;
+import com.jte.sync2es.conf.RuleConfigParser;
 import com.jte.sync2es.exception.ShouldNeverHappenException;
 import com.jte.sync2es.extract.SourceMetaExtract;
 import com.jte.sync2es.extract.SourceOriginDataExtract;
@@ -44,6 +45,9 @@ public class StartListener {
     @Resource
     DumpTransform dumpTransform;
 
+    @Resource
+    RuleConfigParser ruleConfigParser;
+
     /**
      * 1、获取所有要同步的表
      * 2、每一张表检查是否要同步原始数据
@@ -53,8 +57,15 @@ public class StartListener {
     @EventListener(ApplicationReadyEvent.class)
     public void startRiver()
     {
-        System.out.println("=======================start river===========================");
+        ruleConfigParser.initRules();
+        System.out.println("=======================syncing manifest===========================");
         Map<String, TableMeta> tableRules=RULES_MAP.asMap();
+        for(String key:tableRules.keySet())
+        {
+            TableMeta currTableMeta = tableRules.get(key);
+            System.out.println("dbName:"+currTableMeta.getDbName()+",tableName:"+currTableMeta.getTableName()+",esIndex:"+currTableMeta.getEsIndexName()+",topicName:"+currTableMeta.getTopicName());
+        }
+        System.out.println("=======================start river===========================");
         for(String key:tableRules.keySet())
         {
             TableMeta currTableMeta= tableRules.get(key);
@@ -67,6 +78,7 @@ public class StartListener {
                 if(sourceCount>0&&targetCount==0)
                 {
                     currTableMeta.setState(SyncState.LOADING_ORIGIN_DATA);
+                    loadService.checkAndCreateStorage(currTableMeta);
                     //开始同步原始数据
                     File dataFile=sourceOriginDataExtract.dumpData(currTableMeta);
                     Iterator iterator=dumpTransform.transform(dataFile,currTableMeta);
@@ -86,18 +98,18 @@ public class StartListener {
                 //开始同步增量数据
                 currTableMeta.setState(SyncState.SYNCING);
                 KafkaMessageListenerContainer container=KafkaConfig
-                        .getKafkaListener(currTableMeta.getDbName(),currTableMeta.getTopicGroup(),currTableMeta.getTableName());
+                        .getKafkaListener(currTableMeta.getDbName(),currTableMeta.getTopicGroup(),currTableMeta.getTopicName());
                 if(!container.isRunning()){
                     container.start();
                 }
-                log.warn("start river is success",
+                log.info("start river is success,tableName:{},dbName:{},esIndex:{},topicName:{}",
                         currTableMeta.getTableName(),currTableMeta.getDbName(),currTableMeta.getEsIndexName(),currTableMeta.getTopicName());
             }
             catch (Exception e)
             {
                 currTableMeta.setState(SyncState.STOPPED);
                 log.error("start river is fail,tableName:{},dbName:{},esIndex:{},topicName:{}",
-                        currTableMeta.getTableName(),currTableMeta.getDbName(),currTableMeta.getEsIndexName(),currTableMeta.getTopicName());
+                        currTableMeta.getTableName(),currTableMeta.getDbName(),currTableMeta.getEsIndexName(),currTableMeta.getTopicName(),e);
             }
         }
     }

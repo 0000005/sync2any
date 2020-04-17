@@ -73,7 +73,7 @@ public class MysqlDumpTransformImpl implements DumpTransform {
                 {
                     value=null;
                 }
-                params.put(columnMeta.getEsColumnName(),value);
+                params.put(columnMeta.getEsColumnName(),DbUtils.delQuote(value));
             }
         }
         return params;

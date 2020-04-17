@@ -38,7 +38,7 @@ public class KafkaConfig {
 
     @PostConstruct
     public void initKafka() {
-        sync2es.getSyncConfig().forEach(sdb->{
+        sync2es.getSyncConfigList().forEach(sdb->{
             ContainerProperties containerProps = new ContainerProperties(sdb.getMq().getTopicName());
             containerProps.setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
             containerProps.setMessageListener(new KafkaMsgListener(transform,load));

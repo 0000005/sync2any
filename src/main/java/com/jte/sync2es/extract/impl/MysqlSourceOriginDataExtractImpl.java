@@ -4,13 +4,17 @@ import com.jte.sync2es.exception.ShouldNeverHappenException;
 import com.jte.sync2es.extract.SourceOriginDataExtract;
 import com.jte.sync2es.model.config.Conn;
 import com.jte.sync2es.model.config.MysqlDb;
+import com.jte.sync2es.model.config.Sync2es;
 import com.jte.sync2es.model.mysql.TableMeta;
 import com.jte.sync2es.util.DbUtils;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.io.FileUtils;
 import org.buildobjects.process.ProcBuilder;
 import org.buildobjects.process.ProcResult;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import java.io.File;
@@ -22,6 +26,8 @@ import java.util.Random;
 /**
  * 从mysql中提取原始数据
  */
+@Service
+@Slf4j
 public class MysqlSourceOriginDataExtractImpl implements SourceOriginDataExtract {
 
 
@@ -29,11 +35,11 @@ public class MysqlSourceOriginDataExtractImpl implements SourceOriginDataExtract
     @Qualifier("allTemplate")
     Map<String,JdbcTemplate> allTemplate;
 
-
     @Resource
     MysqlDb mysqlDb;
 
-    private final String dumpCommand="mysqldump -h#{host} -P${port} -u#{username} -p#{password} -t -c --compact --single-transaction --databases #{dbName} --tables #{tableName} > #{filePathName}";
+    @Resource
+    Sync2es sync2es;
 
     /**
      * example: mysqldump -h192.168.10.203 -uroot -pxyz11111111 -t -c --compact --single-transaction --databases jte_pms_member > /tmp/member.data.sql
@@ -53,24 +59,30 @@ public class MysqlSourceOriginDataExtractImpl implements SourceOriginDataExtract
         JdbcTemplate jdbcTemplate = allTemplate.get(tableMeta.getDbName());
         String dbUrl=jdbcTemplate.getDataSource().getConnection().getMetaData().getURL();
         Map<String,String> dbParam=DbUtils.getParamFromUrl(dbUrl);
-        String filePath="/tmp/"+tableMeta.getDbName()+"_"+tableMeta.getTableName()+"_"+new Random().nextInt(99999)+".data.sql";
-        String execCommand = new String(dumpCommand);
-        execCommand=execCommand.replace("#{host}",dbParam.get("host"));
-        execCommand=execCommand.replace("#{port}",dbParam.get("port"));
-        execCommand=execCommand.replace("#{username}",dbConfig.getUsername());
-        execCommand=execCommand.replace("#{password}",dbConfig.getPassword());
-        execCommand=execCommand.replace("#{dbName}",tableMeta.getDbName());
-        execCommand=execCommand.replace("#{tableName}",tableMeta.getTableName());
-        execCommand=execCommand.replace("#{filePathName}",filePath);
-        ProcBuilder builder = new ProcBuilder(execCommand);
+        String filePath=System.getProperty("java.io.tmpdir")+File.separator+tableMeta.getDbName()+"_"+tableMeta.getTableName()+"_"+new Random().nextInt(99999)+".data.sql";
+        File sqlFile= new File(filePath);
+
+        ProcBuilder builder = new ProcBuilder(sync2es.getMysqldump());
+        builder.withArg("-h"+dbParam.get("host"));
+        builder.withArg("-P"+dbParam.get("port"));
+        builder.withArg("-u"+dbConfig.getUsername());
+        builder.withArg("-p"+dbConfig.getPassword());
+        builder.withArg("-t");
+        builder.withArg("-c");
+        builder.withArg("--compact");
+        builder.withArg("--single-transaction");
+        builder.withArgs("--databases",tableMeta.getDbName());
+        builder.withArgs("--tables",tableMeta.getTableName());
+        builder.withOutputConsumer(stream -> FileUtils.copyToFile(stream,sqlFile));
         ProcResult result=builder.run();
+
 
         if(result.getExitValue()!=0)
         {
             throw new IllegalAccessException("mysql dump fail! exitValue:"+result.getExitValue()+" output:"+result.getOutputString());
         }
 
-        File sqlFile= new File(filePath);
+
         if(!sqlFile.exists())
         {
             throw new ShouldNeverHappenException("mysqldump error,sql file is not exists!");

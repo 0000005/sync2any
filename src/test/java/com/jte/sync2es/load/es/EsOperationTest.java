@@ -74,6 +74,12 @@ public class EsOperationTest extends Tester {
     }
 
     @Test
+    public void isIndexExistsTest() throws IOException {
+        boolean isExists=esLoadService.isIndexExists("test-wzh");
+        System.out.println(isExists);
+    }
+
+    @Test
     public void addDataTest() throws IOException {
         Assert.assertEquals(1,esLoadService.addData(insertRequest));
     }

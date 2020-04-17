@@ -1,7 +1,6 @@
 package com.jte.sync2es.model.config;
 
 import com.jte.sync2es.Tester;
-import com.jte.sync2es.model.config.Sync2es;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.Assert;
 import org.junit.Test;
@@ -17,7 +16,7 @@ public class Sync2esTest extends Tester {
     public void testReadSyncConfig()
     {
         log.debug(sync2es.toString());
-        Assert.assertNotNull(sync2es.getSyncConfig());
+        Assert.assertNotNull(sync2es.getSyncConfigList());
     }
 
 }

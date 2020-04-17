@@ -24,23 +24,25 @@ public enum SyncState {
     /**
      * waiting to start
      */
-    WAITING(0),
+    WAITING(0,"等待启动"),
     /**
      * sync is stopped
      */
-    STOPPED(1),
+    STOPPED(1,"已停止"),
     /**
      * loading origin data
      */
-    LOADING_ORIGIN_DATA(2),
+    LOADING_ORIGIN_DATA(2,"正在载入原始数据"),
     /**
      * sync is running
      */
-    SYNCING(3);
+    SYNCING(3,"同步中");
 
     private int i;
+    private String desc;
 
-    SyncState(int i) {
+    SyncState(int i,String desc) {
+        this.desc=desc;
         this.i = i;
     }
 
@@ -51,6 +53,14 @@ public enum SyncState {
      */
     public int value() {
         return this.i;
+    }
+    /**
+     * Value desc.
+     *
+     * @return the desc
+     */
+    public String desc() {
+        return this.desc;
     }
 
     /**
