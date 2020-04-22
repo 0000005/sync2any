@@ -77,6 +77,7 @@ public class StartListener {
                 Long sourceCount=sourceMetaExtract.getDataCount(currTableMeta.getDbName(),currTableMeta.getTableName());
                 if(sourceCount>0&&targetCount==0)
                 {
+                    log.warn("start to dump origin data of "+currTableMeta.getDbName()+"."+currTableMeta.getTableName());
                     currTableMeta.setState(SyncState.LOADING_ORIGIN_DATA);
                     loadService.checkAndCreateStorage(currTableMeta);
                     //开始同步原始数据
@@ -94,16 +95,17 @@ public class StartListener {
                             }
                         }
                     }
+                    log.warn("dump origin data is success,tableName:{},dbName:{},esIndex:{},topicName:{}",
+                            currTableMeta.getTableName(),currTableMeta.getDbName(),currTableMeta.getEsIndexName(),currTableMeta.getTopicName());
                 }
                 //开始同步增量数据
                 currTableMeta.setState(SyncState.SYNCING);
                 KafkaMessageListenerContainer container=KafkaConfig
                         .getKafkaListener(currTableMeta.getDbName(),currTableMeta.getTopicGroup(),currTableMeta.getTopicName());
-                if(!container.isRunning()){
+                if(KafkaConfig.canStartListener(container,currTableMeta.getTopicGroup(),currTableMeta.getTopicName())){
+                    log.info("kafka({}) start listening!",container.getBeanName());
                     container.start();
                 }
-                log.info("start river is success,tableName:{},dbName:{},esIndex:{},topicName:{}",
-                        currTableMeta.getTableName(),currTableMeta.getDbName(),currTableMeta.getEsIndexName(),currTableMeta.getTopicName());
             }
             catch (Exception e)
             {

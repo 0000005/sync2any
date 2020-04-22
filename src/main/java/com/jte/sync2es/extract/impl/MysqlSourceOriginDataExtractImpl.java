@@ -74,6 +74,8 @@ public class MysqlSourceOriginDataExtractImpl implements SourceOriginDataExtract
         builder.withArgs("--databases",tableMeta.getDbName());
         builder.withArgs("--tables",tableMeta.getTableName());
         builder.withOutputConsumer(stream -> FileUtils.copyToFile(stream,sqlFile));
+        //30分钟超时
+        builder.withTimeoutMillis(1000*60*30);
         ProcResult result=builder.run();
 
 

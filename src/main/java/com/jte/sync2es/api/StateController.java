@@ -39,7 +39,7 @@ public class StateController {
             row.put("esIndexName",meta.getEsIndexName());
             row.put("topicName",meta.getTopicName());
             row.put("topicGroup",meta.getTopicGroup());
-            row.put("delay",delay+"");
+            row.put("delay",delay/1000+"");
             row.put("state",meta.getState().desc());
             i++;
             mapList.add(row);

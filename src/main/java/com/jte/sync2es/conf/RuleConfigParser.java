@@ -18,10 +18,7 @@ import org.springframework.context.annotation.Configuration;
 
 import javax.annotation.Resource;
 import java.sql.Types;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -79,7 +76,8 @@ public class RuleConfigParser {
                             continue;
                         }
                         //该表还未解析规则，寻找规则
-                        Rule rule=config.getRules().stream()
+                        List<Rule> ruleList= Optional.ofNullable(config.getRules()).orElse(Collections.emptyList());
+                        Rule rule=ruleList.stream()
                                 .filter(tr -> Pattern.matches(tr.getTable(),realTableName))
                                 .findFirst().orElse(new Rule());
                         tableMeta = sourceMetaExtract.getTableMate(db.getDbName(),realTableName);
@@ -175,6 +173,19 @@ public class RuleConfigParser {
     }
 
     private TableMeta parseColumnMeta(TableMeta tableMeta,Rule rule){
+        if(Objects.isNull(rule))
+        {
+            //全部使用默认规则
+            tableMeta.setEsIndexName(tableMeta.getDbName().toLowerCase()+"-"+tableMeta.getTableName().toLowerCase());
+            for(String columnName:tableMeta.getAllColumnMap().keySet())
+            {
+                ColumnMeta columnMeta=tableMeta.getAllColumnMap().get(columnName);
+                //未配置规则，统一化为小写
+                columnMeta.setEsColumnName(columnName.toLowerCase());
+                mapDataTypeOfEs(columnMeta);
+            }
+            return tableMeta;
+        }
 
         ObjectMapper jsonMapper = new ObjectMapper();
         //计算规则

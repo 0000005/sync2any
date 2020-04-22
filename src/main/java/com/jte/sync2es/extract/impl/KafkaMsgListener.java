@@ -40,7 +40,7 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String,Str
     @Override
     public void onMessage(ConsumerRecord<String,String> data, Acknowledgment acknowledgment) {
 
-        System.out.println("message key:"+data.key()+" value:"+data.value());
+        log.debug("message key:"+data.key()+" value:"+data.value());
         TcMqMessage message =JsonUtil.jsonToPojo(data.value(),TcMqMessage.class);
         TableMeta tableMeta=RuleConfigParser.RULES_MAP
                 .getIfPresent(message.getDb().toLowerCase()+"$"+message.getTable().toLowerCase());
@@ -55,6 +55,7 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String,Str
             if(!EVENT_TYPE_DELETE.equals(eventTypeStr)&&!EVENT_TYPE_UPDATE.equals(eventTypeStr)&&!EVENT_TYPE_INSERT.equals(eventTypeStr))
             {
                 log.warn("Ignore unsupported event type:{} , message:{}",eventTypeStr,message);
+                acknowledgment.acknowledge();
                 return ;
             }
 
@@ -74,19 +75,17 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String,Str
         catch (Exception e)
         {
             log.error("fatal error! stopping to sync this table '{}'!",tableMeta.getTableName(),e);
-            stopListener(data,message);
+            stopListener(tableMeta);
             tableMeta.setState(SyncState.STOPPED);
         }
     }
 
-    private void stopListener(ConsumerRecord data,TcMqMessage message)
+    private void stopListener(TableMeta tableMeta)
     {
-        String containerName = message.getDb().toLowerCase()+"_"+data.topic();
-        KafkaMessageListenerContainer container=KafkaConfig.KAFKA_SET.stream()
-                .filter(e->e.getBeanName().equals(containerName))
-                .findFirst().orElse(null);
+        KafkaMessageListenerContainer container=KafkaConfig
+                .getKafkaListener(tableMeta.getDbName(),tableMeta.getTopicGroup(),tableMeta.getTopicName());
         container.stop();
-        log.warn("kafka listener '{}' is stopped!",containerName);
+        log.warn("kafka listener '{}' is stopped!",container.getBeanName());
     }
 
 }

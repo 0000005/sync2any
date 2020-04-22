@@ -257,6 +257,10 @@ public class TableRecords {
             if(shouldCalculateWhere)
             {
                 String whereValue=mqMessage.getWhere().get(i);
+                if(TcMqMessage.NULL_STR.equals(whereValue))
+                {
+                    whereValue=null;
+                }
                 //对应mq中的where属性
                 Field whereField = new Field();
                 whereField.setName(currColumn.getColumnName());
@@ -271,6 +275,10 @@ public class TableRecords {
             if(shouldCalculateField)
             {
                 String fieldValue=mqMessage.getField().get(i);
+                if(TcMqMessage.NULL_STR.equals(fieldValue))
+                {
+                    fieldValue=null;
+                }
                 //对应mq中的field属性
                 Field fieldField = new Field();
                 fieldField.setName(currColumn.getColumnName());

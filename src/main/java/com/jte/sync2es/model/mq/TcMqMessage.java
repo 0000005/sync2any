@@ -9,6 +9,7 @@ import java.util.List;
  */
 @Data
 public class TcMqMessage {
+    public static String NULL_STR="'##isnull##'";
     private String logtype;
     private int eventtype;
     private String eventtypestr;

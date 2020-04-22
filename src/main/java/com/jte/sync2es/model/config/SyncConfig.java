@@ -8,6 +8,12 @@ import java.util.List;
 public class SyncConfig {
     private Mq mq;
     private String dbName;
+    /**
+     * 要同步的表，多个表用逗号分隔，支持正则表达式
+     */
     private String syncTables;
+    /**
+     * 【选填】针对syncTables匹配到的表去自定义一些规则
+     */
     private List<Rule> rules;
 }

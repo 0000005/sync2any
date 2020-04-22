@@ -3,11 +3,8 @@ package com.jte.sync2es.load.es;
 import com.jte.sync2es.Tester;
 import com.jte.sync2es.conf.RuleConfigParser;
 import com.jte.sync2es.model.es.EsRequest;
-import com.jte.sync2es.model.mq.TcMqMessage;
 import com.jte.sync2es.model.mysql.TableMeta;
-import com.jte.sync2es.model.mysql.TableRecords;
 import com.jte.sync2es.transform.RecordsTransform;
-import com.jte.sync2es.util.JsonUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.Assert;
 import org.junit.Before;
@@ -48,23 +45,23 @@ public class EsOperationTest extends Tester {
     public void init(){
         ruleParser.initRules();
 
-        tableMeta=RuleConfigParser.RULES_MAP.getIfPresent("test$wzh");
+        tableMeta=RuleConfigParser.RULES_MAP.getIfPresent("jte_pms_member$t_pms_member");
 
-        TcMqMessage insertMessage =JsonUtil.jsonToPojo(insertMsg,TcMqMessage.class);
-        TableRecords insertTableRecords=TableRecords.buildRecords(tableMeta,insertMessage);
-        insertRequest =transform.transform(insertTableRecords);
-
-        TcMqMessage insertMessage2 =JsonUtil.jsonToPojo(insertMsg2,TcMqMessage.class);
-        TableRecords insertTableRecords2=TableRecords.buildRecords(tableMeta,insertMessage2);
-        insertRequest2 =transform.transform(insertTableRecords2);
-
-        TcMqMessage updateMessage =JsonUtil.jsonToPojo(updateMsg,TcMqMessage.class);
-        TableRecords updateTableRecords=TableRecords.buildRecords(tableMeta,updateMessage);
-        updateRequest =transform.transform(updateTableRecords);
-
-        TcMqMessage deleteMessage =JsonUtil.jsonToPojo(deleteMsg,TcMqMessage.class);
-        TableRecords deleteTableRecords=TableRecords.buildRecords(tableMeta,deleteMessage);
-        deleteRequest =transform.transform(deleteTableRecords);
+//        TcMqMessage insertMessage =JsonUtil.jsonToPojo(insertMsg,TcMqMessage.class);
+//        TableRecords insertTableRecords=TableRecords.buildRecords(tableMeta,insertMessage);
+//        insertRequest =transform.transform(insertTableRecords);
+//
+//        TcMqMessage insertMessage2 =JsonUtil.jsonToPojo(insertMsg2,TcMqMessage.class);
+//        TableRecords insertTableRecords2=TableRecords.buildRecords(tableMeta,insertMessage2);
+//        insertRequest2 =transform.transform(insertTableRecords2);
+//
+//        TcMqMessage updateMessage =JsonUtil.jsonToPojo(updateMsg,TcMqMessage.class);
+//        TableRecords updateTableRecords=TableRecords.buildRecords(tableMeta,updateMessage);
+//        updateRequest =transform.transform(updateTableRecords);
+//
+//        TcMqMessage deleteMessage =JsonUtil.jsonToPojo(deleteMsg,TcMqMessage.class);
+//        TableRecords deleteTableRecords=TableRecords.buildRecords(tableMeta,deleteMessage);
+//        deleteRequest =transform.transform(deleteTableRecords);
 
     }
 

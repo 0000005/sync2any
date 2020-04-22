@@ -33,7 +33,10 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 @Slf4j
 @Service
@@ -41,6 +44,7 @@ public class EsLoadServiceImpl implements LoadService {
 
     @Resource
     RestHighLevelClient client;
+    private final Map<String,Long> cacheCount=new HashMap<>();
 
     @Override
     public int operateData(EsRequest request) throws IOException {
@@ -116,8 +120,24 @@ public class EsLoadServiceImpl implements LoadService {
         return requestList.size();
     }
 
+    /**
+     * 此函数谨慎调用，需看懂它的意思
+     * ！！！！注意！！！！
+     * 此接口对于每个esIndex在整个应用的生命周期只会查一次，之后的对此函数的调用都会返回第一次查询的值。
+     * 这么做的原因是，为了多个分表（rule使用正则表达式）同步到同一个esIndex时，第一次dump数据的完整性。不然只会同步第一个分表的数据。
+     * ！！！！注意！！！！
+     * 查看es的index是否存在且有数据。
+     * @param esIndex
+     * @return
+     * @throws IOException
+     */
     @Override
     public Long countData(String esIndex) throws IOException {
+        Long count=cacheCount.get(esIndex);
+        if(Objects.nonNull(count))
+        {
+            return count;
+        }
         if(!isIndexExists(esIndex))
         {
             return 0L;
@@ -125,7 +145,9 @@ public class EsLoadServiceImpl implements LoadService {
         CountRequest countRequest = new CountRequest(esIndex);
         countRequest.query(QueryBuilders.matchAllQuery());
         CountResponse countResponse = client.count(countRequest, RequestOptions.DEFAULT);
-        return countResponse.getCount();
+        count= countResponse.getCount();
+        cacheCount.put(esIndex,count);
+        return count;
     }
 
     /**
@@ -198,8 +220,11 @@ public class EsLoadServiceImpl implements LoadService {
             ObjectNode typeValue=null;
             if(c.getEsDataType().equals(EsDateType.TEXT.getDataType())||c.getEsDataType().equals(EsDateType.KEYWORD.getDataType()))
             {
-                ObjectNode rowValue=mapper.createObjectNode().put("type","text");
-                ObjectNode rowFieldsValue=mapper.createObjectNode().set("raw",rowValue);
+                ObjectNode rowValue=mapper.createObjectNode();
+                rowValue.put("type","text");
+                rowValue.put("analyzer","ik_max_word");
+                rowValue.put("search_analyzer","ik_smart");
+                ObjectNode rowFieldsValue=mapper.createObjectNode().set("ser",rowValue);
                 typeValue=mapper.createObjectNode()
                         .put("type","keyword")
                         .set("fields",rowFieldsValue);
@@ -208,7 +233,7 @@ public class EsLoadServiceImpl implements LoadService {
             {
                 typeValue=mapper.createObjectNode()
                         .put("type",c.getEsDataType())
-                        .put("format","yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis");
+                        .put("format","yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||yyyy:MM:dd||epoch_millis");
             }
             else
             {
