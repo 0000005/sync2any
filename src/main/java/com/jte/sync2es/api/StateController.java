@@ -20,7 +20,7 @@ public class StateController {
      * 每个同步任务包含：主题名称，主题组名称，数据库名，同步表名，同步字段名，状态【正在同步、异常停止同步】，同步延迟，最近同步时间，异常停止同步原因（如果发生的话）
      * @return
      */
-    @GetMapping("index")
+    @GetMapping("/")
     public String allState(ModelMap modelMap)
     {
         List<Map<String,String>> mapList = new ArrayList<>();

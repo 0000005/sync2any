@@ -94,7 +94,7 @@
     </div>
 
     <footer class="my-5 pt-5 text-muted text-center text-small">
-        <p class="mb-1">© 2020-2028 Jte</p>
+        <p class="mb-1">© 2020 jte v1.0</p>
     </footer>
 
     <!-- Modal -->
