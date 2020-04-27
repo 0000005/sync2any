@@ -2,15 +2,13 @@ package com.jte.sync2es.api;
 
 import com.jte.sync2es.conf.RuleConfigParser;
 import com.jte.sync2es.model.mysql.TableMeta;
+import com.jte.sync2es.util.DateUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.ModelMap;
 import org.springframework.web.bind.annotation.GetMapping;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Slf4j
 @Controller
@@ -41,6 +39,9 @@ public class StateController {
             row.put("topicGroup",meta.getTopicGroup());
             row.put("delay",delay/1000+"");
             row.put("state",meta.getState().desc());
+            row.put("lastSyncTime",DateUtils.formatDate(new Date(meta.getLastSyncTime()),DateUtils.SHORT));
+            row.put("tpq",meta.getTpq()+"");
+            row.put("errorReason",meta.getErrorReason()+"");
             i++;
             mapList.add(row);
         }

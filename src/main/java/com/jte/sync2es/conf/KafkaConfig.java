@@ -47,7 +47,7 @@ public class KafkaConfig {
             containerProps.setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
             containerProps.setMessageListener(new KafkaMsgListener(transform,load));
             KafkaMessageListenerContainer<String, String> container = createContainer(sdb.getMq(),containerProps);
-            container.setBeanName(sdb.getDbName()+"_"+sdb.getMq().getTopicGroup()+"_"+sdb.getMq().getTopicName());
+            container.setBeanName(sdb.getDbName().toLowerCase()+"_"+sdb.getMq().getTopicGroup()+"_"+sdb.getMq().getTopicName());
             KAFKA_SET.add(container);
         });
     }
@@ -68,6 +68,12 @@ public class KafkaConfig {
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        props.put(ConsumerConfig.ALLOW_AUTO_CREATE_TOPICS_CONFIG, false);
+        //每次最多拉取4000条数据
+        props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 4000);
+        //1次拉去最多处理时间为300秒
+        props.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, 300000);
+        props.put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, 5000);
         return props;
     }
 

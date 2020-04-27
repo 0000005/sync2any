@@ -5,6 +5,7 @@ import com.jte.sync2es.conf.RuleConfigParser;
 import com.jte.sync2es.exception.ShouldNeverHappenException;
 import com.jte.sync2es.extract.SourceMetaExtract;
 import com.jte.sync2es.extract.SourceOriginDataExtract;
+import com.jte.sync2es.extract.impl.KafkaMsgListener;
 import com.jte.sync2es.load.LoadService;
 import com.jte.sync2es.model.core.SyncState;
 import com.jte.sync2es.model.es.EsRequest;
@@ -109,7 +110,7 @@ public class StartListener {
             }
             catch (Exception e)
             {
-                currTableMeta.setState(SyncState.STOPPED);
+                KafkaMsgListener.stopListener(currTableMeta,e);
                 log.error("start river is fail,tableName:{},dbName:{},esIndex:{},topicName:{}",
                         currTableMeta.getTableName(),currTableMeta.getDbName(),currTableMeta.getEsIndexName(),currTableMeta.getTopicName(),e);
             }

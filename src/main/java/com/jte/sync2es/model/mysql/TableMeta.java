@@ -17,6 +17,7 @@ package com.jte.sync2es.model.mysql;
 
 
 import com.jte.sync2es.model.core.SyncState;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.*;
 import java.util.Map.Entry;
@@ -49,6 +50,16 @@ public class TableMeta {
      * delayTime = lastSyncTime - lastDataManipulateTime
      */
     private long lastDataManipulateTime=0;
+
+    /**
+     * time per process
+     */
+    private long tpq;
+
+    /**
+     *  error reason for stop sync
+     */
+    private String errorReason;
 
     /**
      *
@@ -119,6 +130,29 @@ public class TableMeta {
 
     public void setEsIndexName(String esIndexName) {
         this.esIndexName = esIndexName;
+    }
+
+    public long getTpq() {
+        return tpq;
+    }
+
+    public void setTpq(long tpq) {
+        this.tpq = tpq;
+    }
+
+    public String getErrorReason() {
+        if(StringUtils.isBlank(errorReason))
+        {
+            return errorReason;
+        }
+        else
+        {
+            return errorReason.replaceAll("\"","”").replaceAll("'","’");
+        }
+    }
+
+    public void setErrorReason(String errorReason) {
+        this.errorReason = errorReason;
     }
 
     /**

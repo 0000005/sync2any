@@ -1,5 +1,6 @@
 package com.jte.sync2es.extract.impl;
 
+import com.google.common.base.Throwables;
 import com.jte.sync2es.conf.KafkaConfig;
 import com.jte.sync2es.conf.RuleConfigParser;
 import com.jte.sync2es.load.LoadService;
@@ -40,6 +41,7 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String,Str
     @Override
     public void onMessage(ConsumerRecord<String,String> data, Acknowledgment acknowledgment) {
 
+        long startTime=System.currentTimeMillis();
         log.debug("message key:"+data.key()+" value:"+data.value());
         TcMqMessage message =JsonUtil.jsonToPojo(data.value(),TcMqMessage.class);
         TableMeta tableMeta=RuleConfigParser.RULES_MAP
@@ -68,23 +70,29 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String,Str
             //记录时间
             long dataUpdateTime=new BigDecimal(message.getBegintime()).multiply(new BigDecimal(1000)).longValue();
             tableMeta.setLastDataManipulateTime(dataUpdateTime);
-            tableMeta.setLastSyncTime(System.currentTimeMillis());
+            long endTime=System.currentTimeMillis();
+            tableMeta.setLastSyncTime(endTime);
+            tableMeta.setTpq(endTime-startTime);
             //at last,we commit this msg.
             acknowledgment.acknowledge();
         }
         catch (Exception e)
         {
-            log.error("fatal error! stopping to sync this table '{}'!",tableMeta.getTableName(),e);
-            stopListener(tableMeta);
-            tableMeta.setState(SyncState.STOPPED);
+            log.error("fatal error! stopping to sync this table '{}',data:{}!",tableMeta.getTableName(),data,e);
+            stopListener(tableMeta,e);
         }
     }
 
-    private void stopListener(TableMeta tableMeta)
+    public static void stopListener(TableMeta tableMeta,Exception e)
     {
+        tableMeta.setState(SyncState.STOPPED);
         KafkaMessageListenerContainer container=KafkaConfig
                 .getKafkaListener(tableMeta.getDbName(),tableMeta.getTopicGroup(),tableMeta.getTopicName());
-        container.stop();
+        if(container.isRunning())
+        {
+            container.stop();
+        }
+        tableMeta.setErrorReason(Throwables.getStackTraceAsString(e));
         log.warn("kafka listener '{}' is stopped!",container.getBeanName());
     }
 
