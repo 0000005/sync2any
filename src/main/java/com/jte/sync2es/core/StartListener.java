@@ -7,6 +7,7 @@ import com.jte.sync2es.extract.SourceMetaExtract;
 import com.jte.sync2es.extract.SourceOriginDataExtract;
 import com.jte.sync2es.extract.impl.KafkaMsgListener;
 import com.jte.sync2es.load.LoadService;
+import com.jte.sync2es.model.config.Sync2es;
 import com.jte.sync2es.model.core.SyncState;
 import com.jte.sync2es.model.es.EsRequest;
 import com.jte.sync2es.model.mysql.TableMeta;
@@ -48,6 +49,9 @@ public class StartListener {
 
     @Resource
     RuleConfigParser ruleConfigParser;
+
+    @Resource
+    Sync2es sync2es;
 
     /**
      * 1、获取所有要同步的表

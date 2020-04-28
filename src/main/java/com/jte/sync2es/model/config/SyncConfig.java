@@ -16,4 +16,16 @@ public class SyncConfig {
      * 【选填】针对syncTables匹配到的表去自定义一些规则
      */
     private List<Rule> rules;
+    /**
+     * 延迟告警(秒)
+     */
+    private int maxDelayInSecond=-1;
+    /**
+     * 空闲告警(分钟)
+     */
+    private int maxIdleInMinute=-1;
+    /**
+     * 下次告警时间(分钟)
+     */
+    private int nextTriggerAlertInMinute=60*24;
 }

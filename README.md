@@ -71,7 +71,7 @@ sync2es:
       #【选填】超过120分钟没接收到同步消息，将会触发告警
       max-idle-in-minute: 120
       #【选填】告警发生180分钟后，如果未恢复，则再次告警
-      next-trigger-alart-in-minute: 180
+      next-trigger-alert-in-minute: 180
       mq:
         # 监听的CKAFKA的topic名称
         topic-name: test-t_pms_member
@@ -89,14 +89,14 @@ sync2es:
           # 字段过滤，多个字段用逗号分隔。如果有值，则只保留这里填写的字段。
           field-filter: "user_id,user_name"
 ```
-### 告警配置
+### 告警配置解说
 告警分为2类
-- 延迟告警
+- 延迟告警（`max-delay-in-second`）
+> 如果突然生产者（TDSQL）突然发送了过多的消息，以至于sync2es一下子消费不完，会导致数据同步延迟很高。可能对es的使用端产生不良影响。默认不告警。
+- 空闲告警（`max-idle-in-minute`）
+> 如果过长的时间没有消费到CKAFKA中消息，很有可能是生产端或队列异常，需要额外注意和排查。默认不告警。
 
-如果突然生产者（TDSQL）突然发送了过多的消息，以至于sync2es一下子消费不完，会导致数据同步延迟很高。可能对es的使用端产生不良影响。
-- 空闲告警
-
-如果过长的时间没有消费到CKAFKA中消息，很有可能是生产端或队列异常，需要额外注意和排查。
+此外还有一个`next-trigger-alart-in-minute`参数，用于控制下次告警时间。也就是说如果触发告警之后，若告警一直未恢复，则隔多久进行下一次告警。如果不配置，默认1天之后会再次告警（若未恢复）。
 
 `望风塔`是一个非常好用的告警平台，sync2es告警使用了第三方`望风塔`提供支持，使用之前需要到[望风塔](wwww.wangfengta.com)进行简单的配置。
 1. 登陆[望风塔](wwww.wangfengta.com)
