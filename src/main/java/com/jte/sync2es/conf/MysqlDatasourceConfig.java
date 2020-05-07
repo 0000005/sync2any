@@ -4,6 +4,7 @@ import com.jte.sync2es.model.config.Conn;
 import com.jte.sync2es.model.config.MysqlDb;
 import com.jte.sync2es.model.mysql.MyDatasource;
 import com.jte.sync2es.model.mysql.OtherDataSources;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 
 @Configuration
+@Slf4j
 public class MysqlDatasourceConfig {
     @Resource
     MysqlDb mysqlDb;
@@ -24,6 +26,11 @@ public class MysqlDatasourceConfig {
     @Bean("primaryDataSource")
     @Primary
     public DataSource primaryDataSource() {
+        if(mysqlDb.getDatasources().size()==0)
+        {
+            log.error("请填写请至少填写一个mysql配置。");
+            System.exit(500);
+        }
         Conn conn=mysqlDb.getDatasources().get(0);
         MyDatasource dataSource = new MyDatasource();
         dataSource.setDbName(conn.getDbName());

@@ -83,6 +83,8 @@ public class TableMeta {
      */
     private Map<String, IndexMeta> allIndexes = new LinkedHashMap<String, IndexMeta>();
 
+    private long lastAlarmTime=0;
+
 
     public SyncState getState() {
         return state;
@@ -275,4 +277,11 @@ public class TableMeta {
         }
     }
 
+    public long getLastAlarmTime() {
+        return lastAlarmTime;
+    }
+
+    public void setLastAlarmTime(long lastAlarmTime) {
+        this.lastAlarmTime = lastAlarmTime;
+    }
 }

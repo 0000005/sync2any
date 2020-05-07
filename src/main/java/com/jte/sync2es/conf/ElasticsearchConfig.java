@@ -1,6 +1,8 @@
 package com.jte.sync2es.conf;
 
 import com.jte.sync2es.model.config.Elasticsearch;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
@@ -14,6 +16,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
+@Slf4j
 public class ElasticsearchConfig {
 
     @Autowired
@@ -21,6 +24,11 @@ public class ElasticsearchConfig {
 
     @Bean
     public RestHighLevelClient restHighLevelClient() {
+        if(StringUtils.isBlank(elasticsearch.getUris()))
+        {
+            log.error("请填写elasticsearch的相关配置。");
+            System.exit(500);
+        }
         final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
         credentialsProvider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(elasticsearch.getUsername(), elasticsearch.getPassword()));
 

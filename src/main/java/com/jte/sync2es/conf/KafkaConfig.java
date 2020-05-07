@@ -9,6 +9,7 @@ import com.jte.sync2es.model.core.SyncState;
 import com.jte.sync2es.model.mysql.TableMeta;
 import com.jte.sync2es.transform.RecordsTransform;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.context.annotation.Configuration;
@@ -42,6 +43,11 @@ public class KafkaConfig {
 
     @PostConstruct
     public void initKafka() {
+        if(StringUtils.isBlank(kafkaMate.getAdress()))
+        {
+            log.error("请填写kafka的相关配置。");
+            System.exit(500);
+        }
         sync2es.getSyncConfigList().forEach(sdb->{
             ContainerProperties containerProps = new ContainerProperties(sdb.getMq().getTopicName());
             containerProps.setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
@@ -61,7 +67,7 @@ public class KafkaConfig {
     }
 
     private Map<String, Object> consumerProps(Mq mq) {
-        Map<String, Object> props = new HashMap<>();
+        Map<String, Object> props = new HashMap<>(20);
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaMate.getAdress());
         props.put(ConsumerConfig.GROUP_ID_CONFIG, mq.getTopicGroup());
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);

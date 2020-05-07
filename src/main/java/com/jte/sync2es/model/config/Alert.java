@@ -8,4 +8,5 @@ public class Alert {
     private String appId;
     private String delayTemplateId;
     private String idleTemplateId;
+    private String errorTemplateId;
 }

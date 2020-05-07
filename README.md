@@ -26,7 +26,7 @@ sync2es可以将腾讯云TDSQL中的数据实时同步到Elasticsearch（7.x）�
 5. 访问`http://127.0.0.1:9070`查看同步状态
 
 ### 配置文件详解
-目前项目启动时暂未做对配置文件的校验，因此错误的配置可能会导致项目启动报错。配置文件采用yml格式，不熟悉的同学可以先学习一下。
+错误的配置可能会导致项目启动报错。配置文件采用yml格式，不熟悉的同学可以先学习一下。
 ```yaml
 #【必填】同步目标elasticsearch的基本配置
 elasticsearch:
@@ -50,7 +50,7 @@ mysql:
 
 #【必填】配置同步到elasticsearch的基本规则
 sync2es:
-  #【必填】mysqldump工具的地址
+  #【选填】mysqldump工具的地址
   mysqldump: D:\program\mysql-5.7.25-winx64\bin\mysqldump.exe
   #【选填】监控告警（www.wangfengta.com），只有填写了此参数才能开启监控告警，具体配置参考下面章节
   alert:
@@ -58,6 +58,7 @@ sync2es:
     app-id: bbbb
     delay-template-id: cccc
     idle-template-id: dddd
+    error-template-id: eeee
     
   # 规则比较灵活，可以配置多个
   sync-config-list:
@@ -90,11 +91,13 @@ sync2es:
           field-filter: "user_id,user_name"
 ```
 ### 告警配置解说
-告警分为2类
+告警分为3类
 - 延迟告警（`max-delay-in-second`）
 > 如果突然生产者（TDSQL）突然发送了过多的消息，以至于sync2es一下子消费不完，会导致数据同步延迟很高。可能对es的使用端产生不良影响。默认不告警。
 - 空闲告警（`max-idle-in-minute`）
 > 如果过长的时间没有消费到CKAFKA中消息，很有可能是生产端或队列异常，需要额外注意和排查。默认不告警。
+- 异常告警
+> 如果同步因为某种异常导致停止，会进行告警。
 
 此外还有一个`next-trigger-alart-in-minute`参数，用于控制下次告警时间。也就是说如果触发告警之后，若告警一直未恢复，则隔多久进行下一次告警。如果不配置，默认1天之后会再次告警（若未恢复）。
 
@@ -109,6 +112,10 @@ sync2es:
 同步空闲时间过久时告警的模板（对应配置文件中的“idle-template-id”）
 标题：${tables}数据同步空闲过长，${idleTime}分钟
 详情：空闲时间：${delay}分钟，数据库：${dbName}，表名称：${tables}，index名称：${indexName}
+
+异常停止同步告警的模板（对应配置文件中的“error-template-id”）
+标题：${tables}异常停止同步
+详情：数据库：${dbName}，表名称：${tables}，index名称：${indexName}，异常原因${error}
 ```
 3. 从`望风塔`中获取相应的appId、templateId以及secret（在个人中心中查看）。
 4. 将相应的参数配置到项目中
@@ -124,6 +131,7 @@ sync2es:
 
 ### 最佳实践
 - CKAFKA创建topic时，一定要将`max.message.bytes`设置为最大值8MB。否则流量高峰时会有TDSQL投递消息到CKAFKA失败的情况发生。
+- CKAFKA创建topic时，将`retention.ms`也就是“topic维度的消息保留时间”设置到一个合适的值。不然丢了消息也找不回来。不过不能太大，因为硬盘堆积满了之后，ckafa将不再接受生产者新投递的消息。
 - 延迟告警的设置最好大于10秒，因为本身就有3-4秒的延迟。
 - 建议每个表都单独建立一个同步任务，并且用不同的topic。这样可以隔离故障，降低时同步延迟。
 
@@ -173,9 +181,6 @@ sync2es:
 - 告警接入
 - es超时重试
 - 配置检查
-
-### 感谢
-思路和配置文件的设计参考了`go-mysql-elasticsearch`
 
 ### 捐助
 如需二次开发或者有问题需要及时准确解答，可以捐赠。
