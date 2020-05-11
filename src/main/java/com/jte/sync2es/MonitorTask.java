@@ -8,10 +8,7 @@ import com.wangfengta.api.WftClient;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -72,8 +69,8 @@ public class MonitorTask implements  Runnable {
                     {
                         try
                         {
-                            log.error("alarm stopped");
-//                            wftClient.alarm(sync2es.getAlert().getAppId(),sync2es.getAlert().getErrorTemplateId());
+                            Map<String,String> param=assmbleAlertParam(currTableMeta,"error",currTableMeta.getErrorReason());
+                            wftClient.alarm(sync2es.getAlert().getAppId(),sync2es.getAlert().getErrorTemplateId(),param);
                             currTableMeta.setLastAlarmTime(System.currentTimeMillis());
                             continue;
                         }
@@ -88,8 +85,8 @@ public class MonitorTask implements  Runnable {
                     {
                         try
                         {
-                            log.error("alarm delay");
-//                            wftClient.alarm(sync2es.getAlert().getAppId(),sync2es.getAlert().getDelayTemplateId(),null);
+                            Map<String,String> param=assmbleAlertParam(currTableMeta,"delay",String.valueOf((delay/1000)));
+                            wftClient.alarm(sync2es.getAlert().getAppId(),sync2es.getAlert().getDelayTemplateId(),param);
                             currTableMeta.setLastAlarmTime(System.currentTimeMillis());
                         }
                         catch (Exception e)
@@ -107,8 +104,8 @@ public class MonitorTask implements  Runnable {
                     {
                         try
                         {
-                            log.error("alarm idle");
-//                            wftClient.alarm(sync2es.getAlert().getAppId(),sync2es.getAlert().getIdleTemplateId());
+                            Map<String,String> param=assmbleAlertParam(currTableMeta,"idleTime",String.valueOf(idleTimeInMinute));
+                            wftClient.alarm(sync2es.getAlert().getAppId(),sync2es.getAlert().getIdleTemplateId(),param);
                             currTableMeta.setLastAlarmTime(System.currentTimeMillis());
                         }
                         catch (Exception e)
@@ -120,5 +117,15 @@ public class MonitorTask implements  Runnable {
                 }
             }
         }
+    }
+
+    private Map<String,String> assmbleAlertParam(TableMeta meta,String key,String value)
+    {
+        Map<String,String> param = new HashMap<>(10);
+        param.put("tables",meta.getTableName());
+        param.put("dbName",meta.getDbName());
+        param.put("indexName",meta.getEsIndexName());
+        param.put(key,value);
+        return param;
     }
 }

@@ -29,6 +29,7 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String,Str
     public static final String EVENT_TYPE_INSERT = "insert";
     public static final String EVENT_TYPE_UPDATE = "update";
     public static final String EVENT_TYPE_DELETE = "delete";
+    public static final int MAX_RETRY_TIMES =3;
 
     private RecordsTransform transform;
     private LoadService load;
@@ -41,18 +42,20 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String,Str
     @Override
     public void onMessage(ConsumerRecord<String,String> data, Acknowledgment acknowledgment) {
 
-        long startTime=System.currentTimeMillis();
-        log.debug("message key:"+data.key()+" value:"+data.value());
-        TcMqMessage message =JsonUtil.jsonToPojo(data.value(),TcMqMessage.class);
-        TableMeta tableMeta=RuleConfigParser.RULES_MAP
-                .getIfPresent(message.getDb().toLowerCase()+"$"+message.getTable().toLowerCase());
-        if(Objects.isNull(tableMeta))
-        {
-            log.warn("tableMeta not found when receive msg from mq. this msg will be ignored. msg:{}",data.value());
-            return ;
-        }
+        TableMeta tableMeta = new TableMeta();
         try
         {
+            long startTime=System.currentTimeMillis();
+            log.debug("message key:"+data.key()+" value:"+data.value());
+            TcMqMessage message =JsonUtil.jsonToPojo(data.value(),TcMqMessage.class);
+            tableMeta=RuleConfigParser.RULES_MAP
+                    .getIfPresent(message.getDb().toLowerCase()+"$"+message.getTable().toLowerCase());
+            if(Objects.isNull(tableMeta))
+            {
+                log.warn("tableMeta not found when receive msg from mq. this msg will be ignored. msg:{}",data.value());
+                return ;
+            }
+
             String eventTypeStr=message.getEventtypestr();
             if(!EVENT_TYPE_DELETE.equals(eventTypeStr)&&!EVENT_TYPE_UPDATE.equals(eventTypeStr)&&!EVENT_TYPE_INSERT.equals(eventTypeStr))
             {
@@ -65,8 +68,26 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String,Str
             TableRecords tableRecords=TableRecords.buildRecords(tableMeta,message);
             //将tableRecords 转化为es的形式
             EsRequest request=transform.transform(tableRecords);
-            //将信息同步到es中
-            load.operateData(request);
+            //将信息同步到es中，如果失败，则重试3次
+
+            for(int i =1;i<=MAX_RETRY_TIMES;i++)
+            {
+                try
+                {
+                    load.operateData(request);
+                    //如果没问题，则只执行一次
+                    break;
+                }
+                catch (Exception esEx)
+                {
+                    log.error("load data error,retry times count:"+i,esEx);
+                    if(i==3)
+                    {
+                        throw esEx;
+                    }
+                }
+            }
+
             //记录时间
             long dataUpdateTime=new BigDecimal(message.getBegintime()).multiply(new BigDecimal(1000)).longValue();
             tableMeta.setLastDataManipulateTime(dataUpdateTime);
@@ -85,14 +106,18 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String,Str
 
     public static void stopListener(TableMeta tableMeta,Exception e)
     {
+        if(Objects.isNull(tableMeta.getDbName()))
+        {
+            return;
+        }
         tableMeta.setState(SyncState.STOPPED);
+        tableMeta.setErrorReason(Throwables.getStackTraceAsString(e));
         KafkaMessageListenerContainer container=KafkaConfig
                 .getKafkaListener(tableMeta.getDbName(),tableMeta.getTopicGroup(),tableMeta.getTopicName());
         if(container.isRunning())
         {
             container.stop();
         }
-        tableMeta.setErrorReason(Throwables.getStackTraceAsString(e));
         log.warn("kafka listener '{}' is stopped!",container.getBeanName());
     }
 

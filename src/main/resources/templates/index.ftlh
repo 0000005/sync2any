@@ -41,8 +41,8 @@
 <div class="content">
     <div class="py-5 text-center">
         <img class="d-block mx-auto mb-4" src="/static/images/logo.png" alt="logo" height="72">
-        <h2>乾坤大挪移</h2>
-        <p class="lead">此功分七层境界，悟性高者修习，第一层需七年，第二层加倍，如此愈发困难。<br>此为本功法之运行状态，可观之以促功力</p>
+        <h2>sync2es</h2>
+        <p class="lead">状态面板，所有同步任务都会在此列出。如果同步过程中有任何异常，应该先到此处进行排查。</p>
         <table class="table">
             <thead>
                 <tr>
