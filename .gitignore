@@ -29,3 +29,5 @@ build/
 
 ### VS Code ###
 .vscode/
+/config/application-dev.yml
+/config/application-prod.yml

@@ -21,7 +21,7 @@ sync2es可以将腾讯云TDSQL中的数据实时同步到Elasticsearch（7.x）�
 #### 本地启动
 1. 安装好`mysqldump`
 2. 从Release中下载最新版的源码,或者编译好的jar包
-3. 将`/config/application-prod.yml`下的配置文件修改成自己对应的配置文件
+3. 将`/config/application-test.yml`下的配置文件修改成自己对应的配置文件
 4. 执行`java -jar sync2es.jar --spring.profiles.active = prod`运行程序
 5. 访问`http://127.0.0.1:9070`查看同步状态
 
@@ -36,14 +36,14 @@ elasticsearch:
 
 #【必填】腾讯云CKAFKA配置
 kafka:
-  adress: 123.207.61.134:32768
+  adress: 127.0.0.1:32768
 
 #【必填】tdsql配置，可以配置多个数据库
 mysql:
   datasources:
     -
       db-name: jte_pms_member
-      url: jdbc:mysql://127.0.0.1:3306/jte_pms_member?useUnicode=true&useSSL=false&characterEncoding=UTF-8&autoReconnect=true&failOverReadOnly=false&useOldAliasMetadataBehavior=true&allowMultiQueries=true&serverTimezone=Hongkong
+      url: jdbc:mysql://127.0.0.1:3306/test?useUnicode=true&useSSL=false&characterEncoding=UTF-8&autoReconnect=true&failOverReadOnly=false&useOldAliasMetadataBehavior=true&allowMultiQueries=true&serverTimezone=Hongkong
       username: test
       password: test
       driver-class-name: com.mysql.cj.jdbc.Driver
@@ -64,9 +64,9 @@ sync2es:
   sync-config-list:
     -
       #【必填】要同步的TDSQL数据库名称
-      db-name: jte_pms_member
+      db-name: member
       #【必填】要同步的表名，支持正则表达式，多个表名用逗号分隔
-      sync-tables: "t_pms_member,t_pms_member_order_[0-9]{10}"
+      sync-tables: "t_member,t_member_order_[0-9]{10}"
       #【选填】延迟超过60秒，将会触发告警
       max-delay-in-second: 60
       #【选填】超过120分钟没接收到同步消息，将会触发告警
@@ -75,18 +75,18 @@ sync2es:
       next-trigger-alert-in-minute: 180
       mq:
         # 监听的CKAFKA的topic名称
-        topic-name: test-t_pms_member
+        topic-name: test-t_member
         #【选填】消费者使用的topicGroup，如果不填写，则随机生成。每次重启本应用都会从kafka的"earliest"处开始读取。
         topic-group: local-test-consumer-group
       #【选填】此处可以配置TDSQL到elasticsearch的映射规则
       rules:
         -
           # 匹配此rule的表名，支持正则表达式
-          table: t_pms_member_order_[0-9]{10}
+          table: t_member_order_[0-9]{10}
           # 自定义es的index名称
-          index: t_pms_member_order
+          index: t_member_order
           # 自定义同步到es的字段名称和字段类型(es的类型)，字段类型请参考类：com.jte.sync2es.model.es.EsDateType
-          map: '{"group_code":"groupCode","hotel_code":"hotelCode,integer","user_code":",integer"}'
+          map: '{"group_code":"groupCode","user_code":",integer"}'
           # 字段过滤，多个字段用逗号分隔。如果有值，则只保留这里填写的字段。
           field-filter: "user_id,user_name"
 ```
