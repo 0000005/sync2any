@@ -12,7 +12,7 @@ sync2es可以将腾讯云TDSQL中的数据实时同步到Elasticsearch（7.x）�
 - 购买了腾讯云提供的[CKAFKA](https://cloud.tencent.com/product/ckafka)
 
 ## 状态面板
-![image](https://cloud-1251017115.cos.ap-guangzhou.myqcloud.com/CPMS/maintenance/%E5%BE%AE%E4%BF%A1%E6%88%AA%E5%9B%BE_20200514160657.png)
+![image](https://cloud-1251017115.cos.ap-guangzhou.myqcloud.com/CPMS/maintenance/20200514160657.png)
 
 ## 配置与安装
 ### 腾讯云端的配置
