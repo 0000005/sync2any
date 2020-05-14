@@ -21,9 +21,10 @@ sync2es可以将腾讯云TDSQL中的数据实时同步到Elasticsearch（7.x）�
 #### 本地启动
 1. 安装好`mysqldump`
 2. 从Release中下载最新版的源码,或者编译好的jar包
-3. 将`/config/application-test.yml`下的配置文件修改成自己对应的配置文件
-4. 执行`java -jar sync2es.jar --spring.profiles.active = prod`运行程序
-5. 访问`http://127.0.0.1:9070`查看同步状态
+3. 将config文件夹复制到jar包同目录。
+4. 将`/config/application-test.yml`下的配置文件修改成自己对应的配置文件
+5. 执行`java -jar sync2es.jar --spring.profiles.active = test`运行程序
+6. 访问`http://127.0.0.1:9070`查看同步状态
 
 ### 配置文件详解
 错误的配置可能会导致项目启动报错。配置文件采用yml格式，不熟悉的同学可以先学习一下。
@@ -178,4 +179,5 @@ sync2es:
 本项目基于spring boot 2.x，充分利用了spring的生态。非常利于扩展和二次开发。如果感兴趣或者需要对接腾讯云其他数据源，可基于本项目进行扩展。
 
 
-
+### 感谢
+本项目起源于我们自己 [金天鹅](www.jintiane.cn) 内部的项目需求，所以非常感谢公司的支持。
