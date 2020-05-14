@@ -7,7 +7,6 @@ import com.jte.sync2es.extract.SourceMetaExtract;
 import com.jte.sync2es.extract.SourceOriginDataExtract;
 import com.jte.sync2es.extract.impl.KafkaMsgListener;
 import com.jte.sync2es.load.LoadService;
-import com.jte.sync2es.model.config.Sync2es;
 import com.jte.sync2es.model.core.SyncState;
 import com.jte.sync2es.model.es.EsRequest;
 import com.jte.sync2es.model.mysql.TableMeta;
@@ -33,8 +32,6 @@ import static com.jte.sync2es.conf.RuleConfigParser.RULES_MAP;
 @Slf4j
 public class StartListener {
 
-
-
     @Resource
     SourceMetaExtract sourceMetaExtract;
 
@@ -49,10 +46,6 @@ public class StartListener {
 
     @Resource
     RuleConfigParser ruleConfigParser;
-
-    @Resource
-    Sync2es sync2es;
-
     /**
      * 1、获取所有要同步的表
      * 2、每一张表检查是否要同步原始数据
@@ -101,6 +94,11 @@ public class StartListener {
                         }
                     }
                     log.warn("dump origin data is success,tableName:{},dbName:{},esIndex:{},topicName:{}",
+                            currTableMeta.getTableName(),currTableMeta.getDbName(),currTableMeta.getEsIndexName(),currTableMeta.getTopicName());
+                }
+                else
+                {
+                    log.warn("skip dump origin data,tableName:{},dbName:{},esIndex:{},topicName:{}",
                             currTableMeta.getTableName(),currTableMeta.getDbName(),currTableMeta.getEsIndexName(),currTableMeta.getTopicName());
                 }
                 //开始同步增量数据
