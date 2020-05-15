@@ -2,15 +2,13 @@ package com.jte.sync2es.api;
 
 import com.jte.sync2es.conf.RuleConfigParser;
 import com.jte.sync2es.model.mysql.TableMeta;
+import com.jte.sync2es.util.DateUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.ModelMap;
 import org.springframework.web.bind.annotation.GetMapping;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Slf4j
 @Controller
@@ -22,7 +20,7 @@ public class StateController {
      * 每个同步任务包含：主题名称，主题组名称，数据库名，同步表名，同步字段名，状态【正在同步、异常停止同步】，同步延迟，最近同步时间，异常停止同步原因（如果发生的话）
      * @return
      */
-    @GetMapping("index")
+    @GetMapping("/")
     public String allState(ModelMap modelMap)
     {
         List<Map<String,String>> mapList = new ArrayList<>();
@@ -41,6 +39,9 @@ public class StateController {
             row.put("topicGroup",meta.getTopicGroup());
             row.put("delay",delay/1000+"");
             row.put("state",meta.getState().desc());
+            row.put("lastSyncTime",DateUtils.formatDate(new Date(meta.getLastSyncTime()),DateUtils.SHORT));
+            row.put("tpq",meta.getTpq()+"");
+            row.put("errorReason",meta.getErrorReason()+"");
             i++;
             mapList.add(row);
         }

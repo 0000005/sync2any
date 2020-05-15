@@ -5,6 +5,7 @@ import com.jte.sync2es.conf.RuleConfigParser;
 import com.jte.sync2es.exception.ShouldNeverHappenException;
 import com.jte.sync2es.extract.SourceMetaExtract;
 import com.jte.sync2es.extract.SourceOriginDataExtract;
+import com.jte.sync2es.extract.impl.KafkaMsgListener;
 import com.jte.sync2es.load.LoadService;
 import com.jte.sync2es.model.core.SyncState;
 import com.jte.sync2es.model.es.EsRequest;
@@ -31,8 +32,6 @@ import static com.jte.sync2es.conf.RuleConfigParser.RULES_MAP;
 @Slf4j
 public class StartListener {
 
-
-
     @Resource
     SourceMetaExtract sourceMetaExtract;
 
@@ -47,7 +46,6 @@ public class StartListener {
 
     @Resource
     RuleConfigParser ruleConfigParser;
-
     /**
      * 1、获取所有要同步的表
      * 2、每一张表检查是否要同步原始数据
@@ -98,6 +96,11 @@ public class StartListener {
                     log.warn("dump origin data is success,tableName:{},dbName:{},esIndex:{},topicName:{}",
                             currTableMeta.getTableName(),currTableMeta.getDbName(),currTableMeta.getEsIndexName(),currTableMeta.getTopicName());
                 }
+                else
+                {
+                    log.warn("skip dump origin data,tableName:{},dbName:{},esIndex:{},topicName:{}",
+                            currTableMeta.getTableName(),currTableMeta.getDbName(),currTableMeta.getEsIndexName(),currTableMeta.getTopicName());
+                }
                 //开始同步增量数据
                 currTableMeta.setState(SyncState.SYNCING);
                 KafkaMessageListenerContainer container=KafkaConfig
@@ -109,7 +112,7 @@ public class StartListener {
             }
             catch (Exception e)
             {
-                currTableMeta.setState(SyncState.STOPPED);
+                KafkaMsgListener.stopListener(currTableMeta,e);
                 log.error("start river is fail,tableName:{},dbName:{},esIndex:{},topicName:{}",
                         currTableMeta.getTableName(),currTableMeta.getDbName(),currTableMeta.getEsIndexName(),currTableMeta.getTopicName(),e);
             }

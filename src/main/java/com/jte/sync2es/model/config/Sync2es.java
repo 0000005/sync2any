@@ -17,4 +17,8 @@ public class Sync2es {
      *  which mysql database need to sync.
      */
     private List<SyncConfig> syncConfigList;
+    /**
+     *  alert config
+     */
+    private Alert alert;
 }

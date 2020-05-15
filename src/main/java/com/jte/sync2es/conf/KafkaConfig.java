@@ -9,6 +9,7 @@ import com.jte.sync2es.model.core.SyncState;
 import com.jte.sync2es.model.mysql.TableMeta;
 import com.jte.sync2es.transform.RecordsTransform;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.context.annotation.Configuration;
@@ -42,12 +43,17 @@ public class KafkaConfig {
 
     @PostConstruct
     public void initKafka() {
+        if(StringUtils.isBlank(kafkaMate.getAdress()))
+        {
+            log.error("请填写kafka的相关配置。");
+            System.exit(500);
+        }
         sync2es.getSyncConfigList().forEach(sdb->{
             ContainerProperties containerProps = new ContainerProperties(sdb.getMq().getTopicName());
             containerProps.setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
             containerProps.setMessageListener(new KafkaMsgListener(transform,load));
             KafkaMessageListenerContainer<String, String> container = createContainer(sdb.getMq(),containerProps);
-            container.setBeanName(sdb.getDbName()+"_"+sdb.getMq().getTopicGroup()+"_"+sdb.getMq().getTopicName());
+            container.setBeanName(sdb.getDbName().toLowerCase()+"_"+sdb.getMq().getTopicGroup()+"_"+sdb.getMq().getTopicName());
             KAFKA_SET.add(container);
         });
     }
@@ -61,13 +67,19 @@ public class KafkaConfig {
     }
 
     private Map<String, Object> consumerProps(Mq mq) {
-        Map<String, Object> props = new HashMap<>();
+        Map<String, Object> props = new HashMap<>(20);
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaMate.getAdress());
         props.put(ConsumerConfig.GROUP_ID_CONFIG, mq.getTopicGroup());
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        props.put(ConsumerConfig.ALLOW_AUTO_CREATE_TOPICS_CONFIG, false);
+        //每次最多拉取4000条数据
+        props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 4000);
+        //1次拉去最多处理时间为300秒
+        props.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, 300000);
+        props.put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, 5000);
         return props;
     }
 

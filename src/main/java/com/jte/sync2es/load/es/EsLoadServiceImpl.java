@@ -140,6 +140,7 @@ public class EsLoadServiceImpl implements LoadService {
         }
         if(!isIndexExists(esIndex))
         {
+            cacheCount.put(esIndex,0L);
             return 0L;
         }
         CountRequest countRequest = new CountRequest(esIndex);

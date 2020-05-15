@@ -17,6 +17,7 @@ package com.jte.sync2es.model.mysql;
 
 
 import com.jte.sync2es.model.core.SyncState;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.*;
 import java.util.Map.Entry;
@@ -51,6 +52,16 @@ public class TableMeta {
     private long lastDataManipulateTime=0;
 
     /**
+     * time per process
+     */
+    private long tpq;
+
+    /**
+     *  error reason for stop sync
+     */
+    private String errorReason;
+
+    /**
      *
      * 0: waiting to start
      * 1: sync is stopped
@@ -71,6 +82,8 @@ public class TableMeta {
      * key: index name
      */
     private Map<String, IndexMeta> allIndexes = new LinkedHashMap<String, IndexMeta>();
+
+    private long lastAlarmTime=0;
 
 
     public SyncState getState() {
@@ -119,6 +132,29 @@ public class TableMeta {
 
     public void setEsIndexName(String esIndexName) {
         this.esIndexName = esIndexName;
+    }
+
+    public long getTpq() {
+        return tpq;
+    }
+
+    public void setTpq(long tpq) {
+        this.tpq = tpq;
+    }
+
+    public String getErrorReason() {
+        if(StringUtils.isBlank(errorReason))
+        {
+            return errorReason;
+        }
+        else
+        {
+            return errorReason.replaceAll("\"","”").replaceAll("'","’");
+        }
+    }
+
+    public void setErrorReason(String errorReason) {
+        this.errorReason = errorReason;
     }
 
     /**
@@ -241,4 +277,11 @@ public class TableMeta {
         }
     }
 
+    public long getLastAlarmTime() {
+        return lastAlarmTime;
+    }
+
+    public void setLastAlarmTime(long lastAlarmTime) {
+        this.lastAlarmTime = lastAlarmTime;
+    }
 }

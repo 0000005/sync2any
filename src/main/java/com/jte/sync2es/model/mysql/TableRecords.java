@@ -21,6 +21,7 @@ import com.jte.sync2es.model.mq.TcMqMessage;
 import com.jte.sync2es.util.DbUtils;
 import com.jte.sync2es.util.JsonUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 
 import java.sql.SQLException;
 import java.util.*;
@@ -237,12 +238,12 @@ public class TableRecords {
         }
         else if(KafkaMsgListener.EVENT_TYPE_INSERT.equals(mqMessage.getEventtypestr())&&fieldSize!=tableColumnSize)
         {
-            log.error("column can't match when delete! tableName:{} meta:{} mqMessage:{}",meta.getTableName(),JsonUtil.objectToJson(meta),JsonUtil.objectToJson(mqMessage));
+            log.warn("column can't match when insert! tableName:{} meta:{} mqMessage:{}",meta.getTableName(),JsonUtil.objectToJson(meta),JsonUtil.objectToJson(mqMessage));
         }
         else if(KafkaMsgListener.EVENT_TYPE_UPDATE.equals(mqMessage.getEventtypestr())&&
                 (fieldSize!=tableColumnSize||whereSize!=tableColumnSize))
         {
-            log.error("column can't match when delete! tableName:{} meta:{} mqMessage:{}",meta.getTableName(),JsonUtil.objectToJson(meta),JsonUtil.objectToJson(mqMessage));
+            log.warn("column can't match when update! tableName:{} meta:{} mqMessage:{}",meta.getTableName(),JsonUtil.objectToJson(meta),JsonUtil.objectToJson(mqMessage));
         }
 
         boolean shouldCalculateWhere=KafkaMsgListener.EVENT_TYPE_DELETE.equals(mqMessage.getEventtypestr())||KafkaMsgListener.EVENT_TYPE_UPDATE.equals(mqMessage.getEventtypestr());
@@ -256,37 +257,26 @@ public class TableRecords {
 
             if(shouldCalculateWhere)
             {
-                String whereValue=mqMessage.getWhere().get(i);
-                if(TcMqMessage.NULL_STR.equals(whereValue))
+                //处理缓存表结构比mq中的消息字段更多的情况
+                if(i>(mqMessage.getWhere().size()-1))
                 {
-                    whereValue=null;
+                    continue;
                 }
+                String whereValue=processValue(mqMessage.getWhere().get(i),currColumn);
                 //对应mq中的where属性
-                Field whereField = new Field();
-                whereField.setName(currColumn.getColumnName());
-                if (meta.getPrimaryKeyOnlyName().stream().anyMatch(e -> whereField.getName().equalsIgnoreCase(e))) {
-                    whereField.setKeyType(KeyType.PRIMARY_KEY);
-                }
-                whereField.setType(currColumn.getDataType());
-                whereField.setValue(DbUtils.delQuote(whereValue));
+                Field whereField = createFieldValue(whereValue,currColumn,meta);
                 whereFields.add(whereField);
             }
 
             if(shouldCalculateField)
             {
-                String fieldValue=mqMessage.getField().get(i);
-                if(TcMqMessage.NULL_STR.equals(fieldValue))
+                if(i>(mqMessage.getField().size()-1))
                 {
-                    fieldValue=null;
+                    continue;
                 }
+                String fieldValue=processValue(mqMessage.getField().get(i),currColumn);
                 //对应mq中的field属性
-                Field fieldField = new Field();
-                fieldField.setName(currColumn.getColumnName());
-                if (meta.getPrimaryKeyOnlyName().stream().anyMatch(e -> fieldField.getName().equalsIgnoreCase(e))) {
-                    fieldField.setKeyType(KeyType.PRIMARY_KEY);
-                }
-                fieldField.setType(currColumn.getDataType());
-                fieldField.setValue(DbUtils.delQuote(fieldValue));
+                Field fieldField = createFieldValue(fieldValue,currColumn,meta);
                 fieldFields.add(fieldField);
             }
         }
@@ -305,6 +295,35 @@ public class TableRecords {
             records.addFieldRow(fieldRow);
         }
         return records;
+    }
+
+    private static Field createFieldValue(String value,ColumnMeta columnMeta,TableMeta meta){
+        Field field = new Field();
+        field.setName(columnMeta.getColumnName());
+        if (meta.getPrimaryKeyOnlyName().stream().anyMatch(e -> field.getName().equalsIgnoreCase(e))) {
+            field.setKeyType(KeyType.PRIMARY_KEY);
+        }
+        field.setType(columnMeta.getDataType());
+        field.setValue(value);
+        return field;
+    }
+
+    private static String processValue(String value,ColumnMeta columnMeta){
+        if(StringUtils.isBlank(value)||TcMqMessage.NULL_STR.equals(value))
+        {
+            return null;
+        }
+        String myValue=DbUtils.delQuote(value);
+        // 当数据库字段为int、tinyint、smallint、bigint等int类型时。
+        // 数据库中的“-50800”发到ckafka出来会是“-50800 (18446744073709500816)”
+        if(columnMeta.getDataTypeName().toLowerCase().contains("int")&&myValue.startsWith("-")&&myValue.contains("("))
+        {
+            return value.substring(0,value.indexOf(" ("));
+        }
+        else
+        {
+            return myValue;
+        }
     }
 
 

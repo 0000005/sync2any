@@ -42,6 +42,7 @@ public class MysqlSourceOriginDataExtractImpl implements SourceOriginDataExtract
     Sync2es sync2es;
 
     /**
+     *
      * example: mysqldump -h192.168.10.203 -uroot -pxyz11111111 -t -c --compact --single-transaction --databases jte_pms_member > /tmp/member.data.sql
      * @param tableMeta
      * @return

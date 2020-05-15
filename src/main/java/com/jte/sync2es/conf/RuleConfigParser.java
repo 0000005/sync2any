@@ -13,6 +13,7 @@ import com.jte.sync2es.model.config.SyncConfig;
 import com.jte.sync2es.model.es.EsDateType;
 import com.jte.sync2es.model.mysql.ColumnMeta;
 import com.jte.sync2es.model.mysql.TableMeta;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.context.annotation.Configuration;
 
@@ -31,6 +32,7 @@ import java.util.stream.Collectors;
  */
 
 @Configuration
+@Slf4j
 public class RuleConfigParser {
 
 
@@ -48,6 +50,7 @@ public class RuleConfigParser {
     MysqlDb mysqlDb;
 
     public void initRules() {
+        this.checkConfig();
         mysqlDb.getDatasources().forEach(db->{
             //获取所有的表名
             List<String> tableNameList= sourceMetaExtract.getAllTableName(db.getDbName());
@@ -94,13 +97,34 @@ public class RuleConfigParser {
 
     }
 
-    //TODO
     private void checkConfig()
     {
-        //1、mysqldump必填
-        //2、mysql datasource必填
-        //2、kafka必填
-        //2、es必填
+        if(StringUtils.isBlank(sync2es.getMysqldump()))
+        {
+            log.warn("mysqldump 未配置，将不会dump原始数据.");
+        }
+        if(sync2es.getSyncConfigList().size()==0)
+        {
+            log.error("请至少填写一个sync-config-list配置");
+            System.exit(500);
+        }
+        sync2es.getSyncConfigList().forEach(s->{
+            if(StringUtils.isBlank(s.getDbName()))
+            {
+                log.error("请填写sync-config-list下的db-name配置项");
+                System.exit(500);
+            }
+            if(StringUtils.isBlank(s.getSyncTables()))
+            {
+                log.error("请填写sync-config-list下的sync-tables配置项");
+                System.exit(500);
+            }
+            if(StringUtils.isBlank(s.getMq().getTopicName()))
+            {
+                log.error("请填写sync-config-list下的topic-name配置项");
+                System.exit(500);
+            }
+        });
     }
 
     private void checkEsDataType(String dataType){

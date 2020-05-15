@@ -11,6 +11,7 @@ import com.jte.sync2es.model.mysql.TableMeta;
 import com.jte.sync2es.transform.DumpTransform;
 import com.jte.sync2es.util.DbUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.io.FileUtils;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
@@ -148,7 +149,13 @@ public class MysqlDumpTransformImpl implements DumpTransform {
 
         @Override
         public boolean hasNext() {
-            return data.hasNextLine();
+            boolean hasNext=data.hasNextLine();
+            if(!hasNext)
+            {
+                this.data.close();
+                FileUtils.deleteQuietly(sourceFile);
+            }
+            return hasNext;
         }
 
         @Override
