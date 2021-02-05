@@ -2,7 +2,7 @@ sync2es可以将腾讯云TDSQL中的数据实时同步到Elasticsearch（7.x）�
 
 首先使用`mysqldump`同步原始数据，再读取CKAFKA中的队列消息实时同步到Elasticsearch中。
 
-实时同步数据流为：[TDSQL](https://cloud.tencent.com/product/dcdb) -> [CKAFKA](https://cloud.tencent.com/product/ckafka) -> sync2es -> Elasticsearch
+实时同步数据流为：TDSQL -> CKAFKA -> sync2es -> Elasticsearch
 
 ## 为什么开发这个项目？
 我们使用了腾讯云的TDSQL,但是腾讯云唯一提供可用的实时导出数据流只有CKAFKA这一个渠道（binlog不可用，因为有多台实例）。于是如果我们想将数据导入到ES或者其他数据源，必须得自己开发中间件，别无他法。
