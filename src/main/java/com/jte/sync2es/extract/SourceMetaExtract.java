@@ -14,5 +14,11 @@ public interface SourceMetaExtract {
      * @return
      */
     Long getDataCount(String dbName,String tableName);
+
+    /**
+     *  获取表名
+     * @param dbName
+     * @return
+     */
     List<String> getAllTableName(String dbName);
 }

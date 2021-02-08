@@ -16,7 +16,7 @@ sync2es可以将腾讯云TDSQL中的数据实时同步到Elasticsearch（7.x）�
 
 ## 配置与安装
 ### 腾讯云端的配置
-1. 进入CKAFKA中，新建一个`topic`。如果对于数据同步的准确性要求高，建议设置分区数（partition）为1。
+1. 进入CKAFKA中，新建一个`topic`。
 2. 进入MariaDB的菜单，找到数据同步模块（别问我为什么TDSQL的数据同步放到了MariaDB里面，），新建同步任务，将数据投递到刚刚创建的`topic`中。
 #### 本地启动
 1. 安装好`mysqldump`

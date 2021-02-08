@@ -1,5 +1,5 @@
 /*
- *  Copyright 1999-2019 Seata.io Group.
+
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -16,8 +16,6 @@
 package com.jte.sync2es.model.mysql;
 
 import lombok.Data;
-
-import java.util.Objects;
 
 /**
  * The type Column meta.
