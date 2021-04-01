@@ -1,10 +1,10 @@
-package com.jte.sync2es.transform.impl;
+package com.jte.sync2any.transform.impl;
 
-import com.jte.sync2es.Tester;
-import com.jte.sync2es.conf.RuleConfigParser;
-import com.jte.sync2es.model.es.EsRequest;
-import com.jte.sync2es.model.mysql.TableMeta;
-import com.jte.sync2es.transform.DumpTransform;
+import com.jte.sync2any.Tester;
+import com.jte.sync2any.conf.RuleConfigParser;
+import com.jte.sync2any.model.es.EsRequest;
+import com.jte.sync2any.model.mysql.TableMeta;
+import com.jte.sync2any.transform.DumpTransform;
 import org.junit.Before;
 import org.junit.Test;
 

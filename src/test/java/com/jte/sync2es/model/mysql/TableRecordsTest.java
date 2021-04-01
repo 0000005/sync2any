@@ -1,9 +1,9 @@
-package com.jte.sync2es.model.mysql;
+package com.jte.sync2any.model.mysql;
 
-import com.jte.sync2es.Tester;
-import com.jte.sync2es.conf.RuleConfigParser;
-import com.jte.sync2es.model.mq.TcMqMessage;
-import com.jte.sync2es.util.JsonUtil;
+import com.jte.sync2any.Tester;
+import com.jte.sync2any.conf.RuleConfigParser;
+import com.jte.sync2any.model.mq.TcMqMessage;
+import com.jte.sync2any.util.JsonUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.Assert;
 import org.junit.Before;

@@ -9,9 +9,9 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.jte.</groupId>
-	<artifactId>sync2es</artifactId>
+	<artifactId>sync2any</artifactId>
 	<version>1.0.0</version>
-	<name>sync2es</name>
+	<name>sync2any</name>
 	<description>sync TDSQL to Elasticsearch</description>
 
 	<properties>
@@ -156,7 +156,7 @@
     </repositories>
 
 	<build>
-        <finalName>sync2es</finalName>
+        <finalName>sync2any</finalName>
 		<plugins>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>

@@ -1,10 +1,10 @@
-package com.jte.sync2es.extract.impl;
+package com.jte.sync2any.extract.impl;
 
-import com.jte.sync2es.Tester;
-import com.jte.sync2es.conf.RuleConfigParser;
-import com.jte.sync2es.extract.SourceOriginDataExtract;
-import com.jte.sync2es.model.config.Sync2es;
-import com.jte.sync2es.model.mysql.TableMeta;
+import com.jte.sync2any.Tester;
+import com.jte.sync2any.conf.RuleConfigParser;
+import com.jte.sync2any.extract.SourceOriginDataExtract;
+import com.jte.sync2any.model.config.sync2any;
+import com.jte.sync2any.model.mysql.TableMeta;
 import org.buildobjects.process.ProcBuilder;
 import org.buildobjects.process.ProcResult;
 import org.junit.Assert;
@@ -22,7 +22,7 @@ public class MysqlSourceOriginDataExtractImplTest  extends Tester {
     RuleConfigParser ruleParser;
 
     @Resource
-    Sync2es sync2es;
+    sync2any sync2any;
 
     @Before
     public void initRules()
@@ -39,7 +39,7 @@ public class MysqlSourceOriginDataExtractImplTest  extends Tester {
     @Test
     public void commandTest()
     {
-        ProcBuilder builder = new ProcBuilder(sync2es.getMysqldump());
+        ProcBuilder builder = new ProcBuilder(sync2any.getMysqldump());
         builder.withArg("--help");
         ProcResult result=builder.run();
         System.out.println(result.getOutputString());

@@ -19,7 +19,7 @@ mysql:
       driver-class-name: com.mysql.cj.jdbc.Driver
 
 #【必填】配置同步到elasticsearch的基本规则
-sync2es:
+sync2any:
   #【选填】mysqldump工具的地址
   mysqldump: D:\program\mysql-5.7.25-winx64\bin\mysqldump.exe
   #【选填】监控告警（www.wangfengta.com），只有填写了此参数才能开启监控告警，具体配置参考下面章节
@@ -55,7 +55,7 @@ sync2es:
           table: t_member_order_[0-9]{10}
           # 自定义es的index名称
           index: t_member_order
-          # 自定义同步到es的字段名称和字段类型(es的类型)，字段类型请参考类：com.jte.sync2es.model.es.EsDateType
+          # 自定义同步到es的字段名称和字段类型(es的类型)，字段类型请参考类：com.jte.sync2any.model.es.EsDateType
           map: '{"group_code":"groupCode","user_code":",integer"}'
           # 字段过滤，多个字段用逗号分隔。如果有值，则只保留这里填写的字段。
           field-filter: "user_id,user_name"

@@ -1,13 +1,13 @@
-package com.jte.sync2es.transform.impl;
+package com.jte.sync2any.transform.impl;
 
-import com.jte.sync2es.Tester;
-import com.jte.sync2es.conf.RuleConfigParser;
-import com.jte.sync2es.model.es.EsRequest;
-import com.jte.sync2es.model.mq.TcMqMessage;
-import com.jte.sync2es.model.mysql.TableMeta;
-import com.jte.sync2es.model.mysql.TableRecords;
-import com.jte.sync2es.transform.RecordsTransform;
-import com.jte.sync2es.util.JsonUtil;
+import com.jte.sync2any.Tester;
+import com.jte.sync2any.conf.RuleConfigParser;
+import com.jte.sync2any.model.es.EsRequest;
+import com.jte.sync2any.model.mq.TcMqMessage;
+import com.jte.sync2any.model.mysql.TableMeta;
+import com.jte.sync2any.model.mysql.TableRecords;
+import com.jte.sync2any.transform.RecordsTransform;
+import com.jte.sync2any.util.JsonUtil;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;

@@ -1,11 +1,12 @@
-package com.jte.sync2es.config;
+package com.jte.sync2any.config;
 
-import com.jte.sync2es.Tester;
+import com.jte.sync2any.Tester;
 import org.junit.Assert;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
+
 import java.util.Map;
 
 public class MysqlDatasourceConfigTest extends Tester {

@@ -1,8 +1,8 @@
-sync2es可以将腾讯云TDSQL中的数据实时同步到Elasticsearch（7.x）。***注意，普通mysql服务并不适用。***
+sync2any可以将腾讯云TDSQL中的数据实时同步到Elasticsearch（7.x）。***注意，普通mysql服务并不适用。***
 
 首先使用`mysqldump`同步原始数据，再读取CKAFKA中的队列消息实时同步到Elasticsearch中。
 
-实时同步数据流为：TDSQL -> CKAFKA -> sync2es -> Elasticsearch
+实时同步数据流为：TDSQL -> CKAFKA -> sync2any -> Elasticsearch
 
 ## 为什么开发这个项目？
 我们使用了腾讯云的TDSQL,但是腾讯云唯一提供可用的实时导出数据流只有CKAFKA这一个渠道（binlog不可用，因为有多台实例）。于是如果我们想将数据导入到ES或者其他数据源，必须得自己开发中间件，别无他法。
@@ -23,7 +23,7 @@ sync2es可以将腾讯云TDSQL中的数据实时同步到Elasticsearch（7.x）�
 2. 从Release中下载最新版的源码,或者编译好的jar包
 3. 将config文件夹复制到jar包同目录。
 4. 将`/config/application-test.yml`下的配置文件修改成自己对应的配置文件
-5. 执行`java -jar sync2es.jar --spring.profiles.active = test`运行程序
+5. 执行`java -jar sync2any.jar --spring.profiles.active = test`运行程序
 6. 访问`http://127.0.0.1:9070`查看同步状态
 
 ### 配置文件详解
@@ -50,7 +50,7 @@ mysql:
       driver-class-name: com.mysql.cj.jdbc.Driver
 
 #【必填】配置同步到elasticsearch的基本规则
-sync2es:
+sync2any:
   #【选填】mysqldump工具的地址
   mysqldump: D:\program\mysql-5.7.25-winx64\bin\mysqldump.exe
   #【选填】监控告警（www.wangfengta.com），只有填写了此参数才能开启监控告警，具体配置参考下面章节
@@ -86,7 +86,7 @@ sync2es:
           table: t_member_order_[0-9]{10}
           # 自定义es的index名称
           index: t_member_order
-          # 自定义同步到es的字段名称和字段类型(es的类型)，字段类型请参考类：com.jte.sync2es.model.es.EsDateType
+          # 自定义同步到es的字段名称和字段类型(es的类型)，字段类型请参考类：com.jte.sync2any.model.es.EsDateType
           map: '{"group_code":"groupCode","user_code":",integer"}'
           # 字段过滤，多个字段用逗号分隔。如果有值，则只保留这里填写的字段。
           field-filter: "user_id,user_name"
@@ -96,7 +96,7 @@ sync2es:
 - 当tdsql的表中存在数据，且es中index不存在或者index中无document时才会dump原始数据同步到es。
 - es的index默认命名规则为“数据库名-表名”,es那边的字段名和tdsql保持一致。默认所有同步过去的名称都会转化为小写。
 - 一旦同步过程中发生任何错误，该任务会停止继续同步，防止数据错乱。其他正常的任务可继续执行，不影响。
-- sync2es会将数据库中的主键当作es中document的主键。碰到复合主键时，多个主键使用“_”符号隔开。
+- sync2any会将数据库中的主键当作es中document的主键。碰到复合主键时，多个主键使用“_”符号隔开。
 - 在es中的更新和删除操作都是通过es的主键来定位document
 - 因为在同步原始数据前队列中会堆积消息（binlog），这意味着我们会重复消费到以前的binlog。此时要求update、delete语句中的条件必须基于不经常变动的字段（如id主键），否则重复消费binlog时可能导致消息错乱。
 
@@ -135,7 +135,7 @@ sync2es:
 
 - 同步途中失败了，导致同步停止了该怎么办？
 
-首先确定是否是sync2es的代码问题，如果是解析逻辑有问题，则需要修改bug。如果是es端发生问题，可以重启sync2es重新同步。怕消息有丢失的话，可以到CKAFKA控制台重新设置消费者的位置（可按时间）。如果是同步任务本身有问题，则需要新建同步任务，或工单联系腾讯云。
+首先确定是否是sync2any的代码问题，如果是解析逻辑有问题，则需要修改bug。如果是es端发生问题，可以重启sync2any重新同步。怕消息有丢失的话，可以到CKAFKA控制台重新设置消费者的位置（可按时间）。如果是同步任务本身有问题，则需要新建同步任务，或工单联系腾讯云。
 
 ### 参与项目开发
 本项目基于spring boot 2.x，充分利用了spring的生态。非常利于扩展和二次开发。如果感兴趣或者需要对接腾讯云其他数据源，可基于本项目进行扩展。

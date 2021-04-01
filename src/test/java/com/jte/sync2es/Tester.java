@@ -1,4 +1,4 @@
-package com.jte.sync2es;
+package com.jte.sync2any;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -7,7 +7,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 
 //@Transactional(rollbackFor = Exception.class)
 @RunWith(SpringRunner.class)
-@SpringBootTest(classes = Sync2esApplication.class)
+@SpringBootTest(classes = sync2anyApplication.class)
 //@Rollback
 public class Tester {
     @Test

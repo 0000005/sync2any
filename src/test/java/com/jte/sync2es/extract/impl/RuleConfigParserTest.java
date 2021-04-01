@@ -1,9 +1,9 @@
-package com.jte.sync2es.extract.impl;
+package com.jte.sync2any.extract.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jte.sync2es.Tester;
-import com.jte.sync2es.conf.RuleConfigParser;
+import com.jte.sync2any.Tester;
+import com.jte.sync2any.conf.RuleConfigParser;
 import org.junit.Test;
 
 import javax.annotation.Resource;

@@ -1,8 +1,8 @@
-package com.jte.sync2es.extract.impl;
+package com.jte.sync2any.extract.impl;
 
-import com.jte.sync2es.Tester;
-import com.jte.sync2es.extract.SourceMetaExtract;
-import com.jte.sync2es.model.mysql.TableMeta;
+import com.jte.sync2any.Tester;
+import com.jte.sync2any.extract.SourceMetaExtract;
+import com.jte.sync2any.model.mysql.TableMeta;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.platform.commons.util.StringUtils;
