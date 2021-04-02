@@ -7,7 +7,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 
 //@Transactional(rollbackFor = Exception.class)
 @RunWith(SpringRunner.class)
-@SpringBootTest(classes = sync2anyApplication.class)
+@SpringBootTest(classes = Sync2anyApplication.class)
 //@Rollback
 public class Tester {
     @Test

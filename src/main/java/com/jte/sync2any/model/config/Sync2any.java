@@ -8,7 +8,7 @@ import java.util.List;
 @Component
 @ConfigurationProperties("sync2any")
 @Data
-public class sync2any {
+public class Sync2any {
     /**
      * "mysqldump" command path
      */

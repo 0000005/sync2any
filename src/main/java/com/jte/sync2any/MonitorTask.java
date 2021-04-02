@@ -1,7 +1,7 @@
 package com.jte.sync2any;
 
+import com.jte.sync2any.model.config.Sync2any;
 import com.jte.sync2any.model.config.SyncConfig;
-import com.jte.sync2any.model.config.sync2any;
 import com.jte.sync2any.model.core.SyncState;
 import com.jte.sync2any.model.mysql.TableMeta;
 import com.wangfengta.api.WftClient;
@@ -20,10 +20,10 @@ import java.util.stream.Collectors;
 public class MonitorTask implements  Runnable {
 
     private Map<String, TableMeta> tableRules;
-    private sync2any sync2any;
+    private Sync2any sync2any;
     private WftClient wftClient;
 
-    public MonitorTask(Map<String, TableMeta> tableRules, sync2any sync2any, WftClient wftClient) {
+    public MonitorTask(Map<String, TableMeta> tableRules, Sync2any sync2any, WftClient wftClient) {
         this.tableRules=tableRules;
         this.sync2any=sync2any;
         this.wftClient=wftClient;

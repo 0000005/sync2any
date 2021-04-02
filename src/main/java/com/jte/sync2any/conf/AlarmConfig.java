@@ -2,7 +2,7 @@ package com.jte.sync2any.conf;
 
 import com.jte.sync2any.MonitorTask;
 import com.jte.sync2any.model.config.Elasticsearch;
-import com.jte.sync2any.model.config.sync2any;
+import com.jte.sync2any.model.config.Sync2any;
 import com.wangfengta.api.WftClient;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -27,7 +27,7 @@ public class AlarmConfig {
     @Autowired
     Elasticsearch elasticsearch;
     @Resource
-    sync2any sync2any;
+    Sync2any sync2any;
 
     private ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
 

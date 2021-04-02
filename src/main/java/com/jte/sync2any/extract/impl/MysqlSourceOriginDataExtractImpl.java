@@ -4,7 +4,7 @@ import com.jte.sync2any.exception.ShouldNeverHappenException;
 import com.jte.sync2any.extract.SourceOriginDataExtract;
 import com.jte.sync2any.model.config.Conn;
 import com.jte.sync2any.model.config.MysqlDb;
-import com.jte.sync2any.model.config.sync2any;
+import com.jte.sync2any.model.config.Sync2any;
 import com.jte.sync2any.model.mysql.TableMeta;
 import com.jte.sync2any.util.DbUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -39,7 +39,7 @@ public class MysqlSourceOriginDataExtractImpl implements SourceOriginDataExtract
     MysqlDb mysqlDb;
 
     @Resource
-    sync2any sync2any;
+    Sync2any sync2any;
 
     /**
      *

@@ -8,8 +8,8 @@ import com.jte.sync2any.exception.ShouldNeverHappenException;
 import com.jte.sync2any.extract.SourceMetaExtract;
 import com.jte.sync2any.model.config.MysqlDb;
 import com.jte.sync2any.model.config.Rule;
+import com.jte.sync2any.model.config.Sync2any;
 import com.jte.sync2any.model.config.SyncConfig;
-import com.jte.sync2any.model.config.sync2any;
 import com.jte.sync2any.model.es.EsDateType;
 import com.jte.sync2any.model.mysql.ColumnMeta;
 import com.jte.sync2any.model.mysql.TableMeta;
@@ -50,7 +50,7 @@ public class RuleConfigParser {
     @Resource
     SourceMetaExtract sourceMetaExtract;
     @Resource
-    sync2any sync2any;
+    Sync2any sync2any;
     @Resource
     MysqlDb mysqlDb;
 

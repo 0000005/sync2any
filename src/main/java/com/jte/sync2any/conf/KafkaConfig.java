@@ -4,7 +4,7 @@ import com.jte.sync2any.extract.impl.KafkaMsgListener;
 import com.jte.sync2any.load.LoadService;
 import com.jte.sync2any.model.config.KafkaMate;
 import com.jte.sync2any.model.config.Mq;
-import com.jte.sync2any.model.config.sync2any;
+import com.jte.sync2any.model.config.Sync2any;
 import com.jte.sync2any.model.core.SyncState;
 import com.jte.sync2any.model.mysql.TableMeta;
 import com.jte.sync2any.transform.RecordsTransform;
@@ -32,7 +32,7 @@ public class KafkaConfig {
     @Resource
     KafkaMate kafkaMate;
     @Resource
-    sync2any sync2any;
+    Sync2any sync2any;
     @Resource
     RecordsTransform transform;
     @Resource

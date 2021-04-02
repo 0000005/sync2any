@@ -7,9 +7,9 @@ import org.junit.Test;
 
 import javax.annotation.Resource;
 @Slf4j
-public class sync2anyTest extends Tester {
+public class Sync2anyTest extends Tester {
     @Resource
-    sync2any sync2any;
+    Sync2any sync2any;
 
 
     @Test
