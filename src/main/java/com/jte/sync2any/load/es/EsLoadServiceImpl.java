@@ -3,7 +3,7 @@ package com.jte.sync2any.load.es;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.jte.sync2any.exception.ShouldNeverHappenException;
-import com.jte.sync2any.extract.impl.KafkaMsgListener;
+import com.jte.sync2any.extract.KafkaMsgListener;
 import com.jte.sync2any.load.LoadService;
 import com.jte.sync2any.model.es.EsDateType;
 import com.jte.sync2any.model.es.EsRequest;

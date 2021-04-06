@@ -7,6 +7,13 @@ import java.util.List;
 @Data
 public class SyncConfig {
     private Mq mq;
+    /**
+     * 同步目的地的类型【es/mysql】
+     */
+    private String targetType;
+    /**
+     * 待同步的数据库名称
+     */
     private String dbName;
     /**
      * 要同步的表，多个表用逗号分隔，支持正则表达式

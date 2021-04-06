@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Configuration;
 @EnableConfigurationProperties
 @ConfigurationProperties("elasticsearch")
 public class Elasticsearch {
-    private String uris;
+    private String uri;
     private String username;
     private String password;
 }

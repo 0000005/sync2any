@@ -29,8 +29,8 @@ public class MysqlSourceMetaExtractImpl implements SourceMetaExtract {
     public final String GET_COUNT_SQL="select count(*) from #{table_name}; ";
 
     @Autowired
-    @Qualifier("allTemplate")
-    Map<String,JdbcTemplate> allTemplate;
+    @Qualifier("allSourceTemplate")
+    Map<String,JdbcTemplate> allSourceTemplate;
 
     @Override
     public TableMeta getTableMate(String dbName,String tableName) {
@@ -71,7 +71,7 @@ public class MysqlSourceMetaExtractImpl implements SourceMetaExtract {
 
     private JdbcTemplate getJdbcTemplate(String dbName)
     {
-        JdbcTemplate jdbcTemplate=allTemplate.get(dbName);
+        JdbcTemplate jdbcTemplate=allSourceTemplate.get(dbName);
         if(Objects.isNull(jdbcTemplate))
         {
             throw new ShouldNeverHappenException("can not find jdbcTemplate for db name:"+dbName);

@@ -1,6 +1,6 @@
 package com.jte.sync2any.conf;
 
-import com.jte.sync2any.extract.impl.KafkaMsgListener;
+import com.jte.sync2any.extract.KafkaMsgListener;
 import com.jte.sync2any.load.LoadService;
 import com.jte.sync2any.model.config.KafkaMate;
 import com.jte.sync2any.model.config.Mq;

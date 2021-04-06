@@ -1,4 +1,4 @@
-package com.jte.sync2any.extract.impl;
+package com.jte.sync2any.extract;
 
 import com.google.common.base.Throwables;
 import com.jte.sync2any.conf.KafkaConfig;
@@ -45,6 +45,7 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String,Str
         TableMeta tableMeta = new TableMeta();
         try
         {
+            String topicName=data.topic();
             long startTime=System.currentTimeMillis();
             log.debug("message key:"+data.key()+" value:"+data.value());
             TcMqMessage message =JsonUtil.jsonToPojo(data.value(),TcMqMessage.class);

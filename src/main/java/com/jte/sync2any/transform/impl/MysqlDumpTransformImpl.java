@@ -26,7 +26,7 @@ import java.util.Objects;
 import java.util.Scanner;
 import java.util.stream.Collectors;
 
-import static com.jte.sync2any.extract.impl.KafkaMsgListener.EVENT_TYPE_INSERT;
+import static com.jte.sync2any.extract.KafkaMsgListener.EVENT_TYPE_INSERT;
 
 @Service
 @Slf4j

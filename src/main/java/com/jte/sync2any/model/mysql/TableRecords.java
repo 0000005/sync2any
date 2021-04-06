@@ -16,7 +16,7 @@
 package com.jte.sync2any.model.mysql;
 
 import com.jte.sync2any.exception.ShouldNeverHappenException;
-import com.jte.sync2any.extract.impl.KafkaMsgListener;
+import com.jte.sync2any.extract.KafkaMsgListener;
 import com.jte.sync2any.model.mq.TcMqMessage;
 import com.jte.sync2any.util.DbUtils;
 import com.jte.sync2any.util.JsonUtil;

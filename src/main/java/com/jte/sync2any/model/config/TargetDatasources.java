@@ -6,8 +6,8 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 @Component
-@ConfigurationProperties("mysql")
+@ConfigurationProperties("target.datasources")
 @Data
-public class MysqlDb {
+public class TargetDatasources {
     private List<Conn> datasources;
 }

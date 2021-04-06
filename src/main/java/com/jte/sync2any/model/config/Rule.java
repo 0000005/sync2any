@@ -12,9 +12,9 @@ public class Rule {
      */
     private String table;
     /**
-     * 自定义es的index名称
+     * 同步到目标数据源的表名或index（对es来说）
      */
-    private String index;
+    private String indexTable;
     /**
      * 自定义同步到es的字段名称和字段类型
      * 字段类型请参考类：com.jte.sync2any.model.es.EsDateType

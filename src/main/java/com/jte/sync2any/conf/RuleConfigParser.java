@@ -6,8 +6,8 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.jte.sync2any.exception.ShouldNeverHappenException;
 import com.jte.sync2any.extract.SourceMetaExtract;
-import com.jte.sync2any.model.config.MysqlDb;
 import com.jte.sync2any.model.config.Rule;
+import com.jte.sync2any.model.config.SourceMysqlDb;
 import com.jte.sync2any.model.config.Sync2any;
 import com.jte.sync2any.model.config.SyncConfig;
 import com.jte.sync2any.model.es.EsDateType;
@@ -21,10 +21,12 @@ import javax.annotation.Resource;
 import java.sql.Types;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -48,15 +50,15 @@ public class RuleConfigParser {
     public static final Cache<String, TableMeta> RULES_MAP = CacheBuilder.newBuilder().build();
 
     @Resource
-    SourceMetaExtract sourceMetaExtract;
+    private SourceMetaExtract sourceMetaExtract;
     @Resource
-    Sync2any sync2any;
+    private Sync2any sync2any;
     @Resource
-    MysqlDb mysqlDb;
+    private SourceMysqlDb sourceMysqlDb;
 
     public void initRules() {
         this.checkConfig();
-        mysqlDb.getDatasources().forEach(db->{
+        sourceMysqlDb.getDatasources().forEach(db->{
             //获取所有的表名
             List<String> tableNameList= sourceMetaExtract.getAllTableName(db.getDbName());
             //找到当前数据库的所有规则
@@ -87,7 +89,7 @@ public class RuleConfigParser {
                         List<Rule> ruleList= Optional.ofNullable(config.getRules()).orElse(Collections.emptyList());
                         Rule rule=ruleList.stream()
                                 .filter(tr -> Pattern.matches(tr.getTable(),realTableName))
-                                .findFirst().orElse(new Rule());
+                                .findFirst().orElse(null);
                         tableMeta = sourceMetaExtract.getTableMate(db.getDbName(),realTableName);
                         tableMeta.setTopicName(config.getMq().getTopicName());
                         tableMeta.setTopicGroup(config.getMq().getTopicGroup());
@@ -113,21 +115,33 @@ public class RuleConfigParser {
             log.error("请至少填写一个sync-config-list配置");
             System.exit(500);
         }
+        Set<String> topicNameSet = new HashSet<>();
         sync2any.getSyncConfigList().forEach(s->{
+            if(StringUtils.isBlank(s.getTargetType()))
+            {
+                log.error("请填写target-type配置项,可选的值有[es,mysql]！");
+                System.exit(500);
+            }
             if(StringUtils.isBlank(s.getDbName()))
             {
-                log.error("请填写sync-config-list下的db-name配置项");
+                log.error("请填写sync-config-list下的db-name配置项！");
                 System.exit(500);
             }
             if(StringUtils.isBlank(s.getSyncTables()))
             {
-                log.error("请填写sync-config-list下的sync-tables配置项");
+                log.error("请填写sync-config-list下的sync-tables配置项！");
                 System.exit(500);
             }
             if(StringUtils.isBlank(s.getMq().getTopicName()))
             {
-                log.error("请填写sync-config-list下的topic-name配置项");
+                log.error("请填写sync-config-list下的topic-name配置项！");
                 System.exit(500);
+            }
+            else if(topicNameSet.contains(s.getMq().getTopicName())){
+                log.error("禁止多个任务监听同一个topic！");
+                System.exit(500);
+            }else{
+                topicNameSet.add(s.getMq().getTopicName());
             }
         });
     }
@@ -218,9 +232,9 @@ public class RuleConfigParser {
 
         ObjectMapper jsonMapper = new ObjectMapper();
         //计算规则
-        if(StringUtils.isNotBlank(rule.getIndex()))
+        if(StringUtils.isNotBlank(rule.getIndexTable()))
         {
-            tableMeta.setEsIndexName(rule.getIndex());
+            tableMeta.setEsIndexName(rule.getIndexTable());
         }
         else
         {

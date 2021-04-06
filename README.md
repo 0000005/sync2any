@@ -31,31 +31,43 @@ sync2any可以借助腾讯云数据订阅（DTS）将腾讯云数据库（mysql�
 ### 配置文件详解
 错误的配置可能会导致项目启动报错。配置文件采用yml格式，不熟悉的同学可以先学习一下。
 ```yaml
-#【必填】同步目标elasticsearch的基本配置
-elasticsearch:
-    uris: 192.168.10.208:9200
-    username: elastic
-    password: changeme
 
 #【必填】腾讯云CKAFKA配置
 kafka:
   adress: 127.0.0.1:32768
 
-#【必填】tdsql配置，可以配置多个数据库
-mysql:
+#【必填】同步目标目标的基本配置（支持mysql和es）
+target.datasources:
+  -
+    #目标数据源的类型（可以为es或mysql）
+    type: es
+    db-name: test
+    #当为es时可以填写多个地址，以逗号分割
+    url: 192.168.10.208:9200,192.168.10.209:9200
+    username: elastic
+    password: changeme
+  -
+    #目标数据源的类型（可以为es或mysql）
+    type: mysql
+    db-name: test
+    url: jdbc:mysql://127.0.0.1:3306/test?useUnicode=true&useSSL=false&characterEncoding=UTF-8&autoReconnect=true&failOverReadOnly=false&useOldAliasMetadataBehavior=true&allowMultiQueries=true&serverTimezone=Hongkong
+    username: root
+    password: root
+
+#【必填】源数据库【支持MySQL和Tdsql】，可以配置多个数据库
+source.mysql:
   datasources:
     -
-      db-name: jte_pms_member
+      db-name: test
       url: jdbc:mysql://127.0.0.1:3306/test?useUnicode=true&useSSL=false&characterEncoding=UTF-8&autoReconnect=true&failOverReadOnly=false&useOldAliasMetadataBehavior=true&allowMultiQueries=true&serverTimezone=Hongkong
       username: test
       password: test
-      driver-class-name: com.mysql.cj.jdbc.Driver
 
 #【必填】配置同步到elasticsearch的基本规则
 sync2any:
   #【选填】mysqldump工具的地址
   mysqldump: D:\program\mysql-5.7.25-winx64\bin\mysqldump.exe
-  #【选填】监控告警（www.wangfengta.com），只有填写了此参数才能开启监控告警，具体配置参考下面章节
+  #【选填】监控告警，只有填写了此参数才能开启监控告警，具体配置参考下面章节
   alert:
     secret: aaaa
     app-id: bbbb
@@ -66,8 +78,10 @@ sync2any:
   # 规则比较灵活，可以配置多个
   sync-config-list:
     -
-      #【必填】要同步的TDSQL数据库名称
-      db-name: member
+      #【必填】同步目的地的类型【es/mysql】
+      target-type: es
+      #【必填】待同步的数据库名称
+      db-name: test
       #【必填】要同步的表名，支持正则表达式，多个表名用逗号分隔
       sync-tables: "t_member,t_member_order_[0-9]{10}"
       #【选填】延迟超过60秒，将会触发告警
@@ -77,7 +91,7 @@ sync2any:
       #【选填】告警发生180分钟后，如果未恢复，则再次告警
       next-trigger-alert-in-minute: 180
       mq:
-        # 监听的CKAFKA的topic名称
+        # 监听的CKAFKA的topic名称（在这整个应用中，多个同步任务不可以监听通一个topic）
         topic-name: test-t_member
         #【选填】消费者使用的topicGroup，如果不填写，则随机生成。每次重启本应用都会从kafka的"earliest"处开始读取。
         topic-group: local-test-consumer-group
@@ -86,8 +100,8 @@ sync2any:
         -
           # 匹配此rule的表名，支持正则表达式
           table: t_member_order_[0-9]{10}
-          # 自定义es的index名称
-          index: t_member_order
+          # 同步到目标数据源的表名或index（对es来说）
+          index_table: t_member_order
           # 自定义同步到es的字段名称和字段类型(es的类型)，字段类型请参考类：com.jte.sync2any.model.es.EsDateType
           map: '{"group_code":"groupCode","user_code":",integer"}'
           # 字段过滤，多个字段用逗号分隔。如果有值，则只保留这里填写的字段。

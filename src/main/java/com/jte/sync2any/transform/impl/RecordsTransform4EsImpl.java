@@ -1,7 +1,7 @@
 package com.jte.sync2any.transform.impl;
 
 import com.jte.sync2any.exception.ShouldNeverHappenException;
-import com.jte.sync2any.extract.impl.KafkaMsgListener;
+import com.jte.sync2any.extract.KafkaMsgListener;
 import com.jte.sync2any.model.es.EsRequest;
 import com.jte.sync2any.model.mysql.ColumnMeta;
 import com.jte.sync2any.model.mysql.Field;

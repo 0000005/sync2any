@@ -1,11 +1,11 @@
-package com.jte.sync2any.core;
+package com.jte.sync2any;
 
 import com.jte.sync2any.conf.KafkaConfig;
 import com.jte.sync2any.conf.RuleConfigParser;
 import com.jte.sync2any.exception.ShouldNeverHappenException;
+import com.jte.sync2any.extract.KafkaMsgListener;
 import com.jte.sync2any.extract.SourceMetaExtract;
 import com.jte.sync2any.extract.SourceOriginDataExtract;
-import com.jte.sync2any.extract.impl.KafkaMsgListener;
 import com.jte.sync2any.load.LoadService;
 import com.jte.sync2any.model.core.SyncState;
 import com.jte.sync2any.model.es.EsRequest;

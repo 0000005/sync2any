@@ -24,7 +24,7 @@ public class ElasticsearchConfig {
 
     @Bean
     public RestHighLevelClient restHighLevelClient() {
-        if(StringUtils.isBlank(elasticsearch.getUris()))
+        if(StringUtils.isBlank(elasticsearch.getUri()))
         {
             log.error("请填写elasticsearch的相关配置。");
             System.exit(500);
@@ -32,7 +32,7 @@ public class ElasticsearchConfig {
         final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
         credentialsProvider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(elasticsearch.getUsername(), elasticsearch.getPassword()));
 
-        String [] urlArray=elasticsearch.getUris().split(",");
+        String [] urlArray=elasticsearch.getUri().split(",");
         HttpHost [] hostArray = new HttpHost[urlArray.length];
         for(int i =0;i<urlArray.length;i++)
         {

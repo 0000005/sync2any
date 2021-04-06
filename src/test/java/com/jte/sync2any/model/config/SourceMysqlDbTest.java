@@ -7,16 +7,16 @@ import org.junit.Test;
 
 import javax.annotation.Resource;
 @Slf4j
-public class MysqlDbTest extends Tester {
+public class SourceMysqlDbTest extends Tester {
 
     @Resource
-    MysqlDb mysqlDb;
+    SourceMysqlDb sourceMysqlDb;
 
     @Test
     public void testReadSyncConfig()
     {
-        log.debug(mysqlDb.toString());
-        Assert.assertNotNull(mysqlDb.getDatasources());
+        log.debug(sourceMysqlDb.toString());
+        Assert.assertNotNull(sourceMysqlDb.getDatasources());
     }
 
 }

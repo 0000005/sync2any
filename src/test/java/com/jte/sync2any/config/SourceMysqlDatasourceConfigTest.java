@@ -9,19 +9,19 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.Map;
 
-public class MysqlDatasourceConfigTest extends Tester {
+public class SourceMysqlDatasourceConfigTest extends Tester {
 
     @Autowired
-    @Qualifier("allTemplate")
-    Map<String,JdbcTemplate> allTemplate;
+    @Qualifier("allSourceTemplate")
+    Map<String,JdbcTemplate> allSourceTemplate;
 
     @Test
     public void testDbConnection()
     {
-        Assert.assertTrue(allTemplate.keySet().size()>0);
-        for(String id:allTemplate.keySet())
+        Assert.assertTrue(allSourceTemplate.keySet().size()>0);
+        for(String id:allSourceTemplate.keySet())
         {
-            JdbcTemplate jdbcTemplate=allTemplate.get(id);
+            JdbcTemplate jdbcTemplate=allSourceTemplate.get(id);
             int n=jdbcTemplate.queryForObject("select 1",Integer.class);
             Assert.assertTrue(n==1);
         }

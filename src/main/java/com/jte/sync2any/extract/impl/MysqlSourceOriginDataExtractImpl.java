@@ -3,7 +3,7 @@ package com.jte.sync2any.extract.impl;
 import com.jte.sync2any.exception.ShouldNeverHappenException;
 import com.jte.sync2any.extract.SourceOriginDataExtract;
 import com.jte.sync2any.model.config.Conn;
-import com.jte.sync2any.model.config.MysqlDb;
+import com.jte.sync2any.model.config.SourceMysqlDb;
 import com.jte.sync2any.model.config.Sync2any;
 import com.jte.sync2any.model.mysql.TableMeta;
 import com.jte.sync2any.util.DbUtils;
@@ -32,11 +32,11 @@ public class MysqlSourceOriginDataExtractImpl implements SourceOriginDataExtract
 
 
     @Autowired
-    @Qualifier("allTemplate")
-    Map<String,JdbcTemplate> allTemplate;
+    @Qualifier("allSourceTemplate")
+    Map<String,JdbcTemplate> allSourceTemplate;
 
     @Resource
-    MysqlDb mysqlDb;
+    SourceMysqlDb sourceMysqlDb;
 
     @Resource
     Sync2any sync2any;
@@ -49,7 +49,7 @@ public class MysqlSourceOriginDataExtractImpl implements SourceOriginDataExtract
      */
     @Override
     public File dumpData(TableMeta tableMeta) throws SQLException, IllegalAccessException {
-        Conn dbConfig= mysqlDb.getDatasources().stream()
+        Conn dbConfig= sourceMysqlDb.getDatasources().stream()
                 .filter(d->d.getDbName().equals(tableMeta.getDbName()))
                 .findFirst().orElse(null);
         if(Objects.isNull(dbConfig))
@@ -57,7 +57,7 @@ public class MysqlSourceOriginDataExtractImpl implements SourceOriginDataExtract
             throw new ShouldNeverHappenException("db config is not found:{}"+tableMeta.getDbName());
         }
 
-        JdbcTemplate jdbcTemplate = allTemplate.get(tableMeta.getDbName());
+        JdbcTemplate jdbcTemplate = allSourceTemplate.get(tableMeta.getDbName());
         String dbUrl=jdbcTemplate.getDataSource().getConnection().getMetaData().getURL();
         Map<String,String> dbParam=DbUtils.getParamFromUrl(dbUrl);
         String filePath=System.getProperty("java.io.tmpdir")+File.separator+tableMeta.getDbName()+"_"+tableMeta.getTableName()+"_"+new Random().nextInt(99999)+".data.sql";
