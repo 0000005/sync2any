@@ -2,22 +2,20 @@ package com.jte.sync2any.extract.impl;
 
 import com.jte.sync2any.exception.ShouldNeverHappenException;
 import com.jte.sync2any.extract.SourceMetaExtract;
+import com.jte.sync2any.model.config.Conn;
+import com.jte.sync2any.model.config.SourceMysqlDb;
 import com.jte.sync2any.model.mysql.ColumnMeta;
 import com.jte.sync2any.model.mysql.IndexMeta;
 import com.jte.sync2any.model.mysql.IndexType;
 import com.jte.sync2any.model.mysql.TableMeta;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.jte.sync2any.util.DbUtils;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.stereotype.Service;
 
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
-import java.sql.Statement;
+import javax.annotation.Resource;
+import java.sql.*;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -28,13 +26,16 @@ public class MysqlSourceMetaExtractImpl implements SourceMetaExtract {
     public final String GET_ALL_TABLES_SQL="select table_name from information_schema.tables where table_schema=? and table_type='base table'";
     public final String GET_COUNT_SQL="select count(*) from #{table_name}; ";
 
-    @Autowired
+    @Resource
     @Qualifier("allSourceTemplate")
     Map<String,JdbcTemplate> allSourceTemplate;
 
+    @Resource
+    SourceMysqlDb sourceMysqlDb;
+
     @Override
-    public TableMeta getTableMate(String dbName,String tableName) {
-        JdbcTemplate jdbcTemplate=getJdbcTemplate(dbName);
+    public TableMeta getTableMate(String dbId,String tableName) {
+        JdbcTemplate jdbcTemplate=getJdbcTemplate(dbId);
         String sql = "SELECT * FROM " + tableName + " LIMIT 1";
         Connection conn=null;
         try {
@@ -54,8 +55,8 @@ public class MysqlSourceMetaExtractImpl implements SourceMetaExtract {
     }
 
     @Override
-    public Long getDataCount(String dbName, String tableName) {
-        JdbcTemplate jdbcTemplate=getJdbcTemplate(dbName);
+    public Long getDataCount(String dbId, String tableName) {
+        JdbcTemplate jdbcTemplate=getJdbcTemplate(dbId);
         String sql = new String(GET_COUNT_SQL);
         sql=sql.replace("#{table_name}",tableName);
         Long count=jdbcTemplate.queryForObject(sql,Long.class);
@@ -63,18 +64,19 @@ public class MysqlSourceMetaExtractImpl implements SourceMetaExtract {
     }
 
     @Override
-    public List<String> getAllTableName(String dbName) {
-        JdbcTemplate jdbcTemplate=getJdbcTemplate(dbName);
-        List<String> tableNameList=jdbcTemplate.queryForList(GET_ALL_TABLES_SQL,String.class,new String[]{dbName});
+    public List<String> getAllTableName(String dbId) {
+        JdbcTemplate jdbcTemplate=getJdbcTemplate(dbId);
+        Conn conn=DbUtils.getConnByDbId(sourceMysqlDb.getDatasources(),dbId);
+        List<String> tableNameList=jdbcTemplate.queryForList(GET_ALL_TABLES_SQL,String.class,new String[]{conn.getDbName()});
         return tableNameList;
     }
 
-    private JdbcTemplate getJdbcTemplate(String dbName)
+    private JdbcTemplate getJdbcTemplate(String dbId)
     {
-        JdbcTemplate jdbcTemplate=allSourceTemplate.get(dbName);
+        JdbcTemplate jdbcTemplate=allSourceTemplate.get(dbId);
         if(Objects.isNull(jdbcTemplate))
         {
-            throw new ShouldNeverHappenException("can not find jdbcTemplate for db name:"+dbName);
+            throw new ShouldNeverHappenException("can not find jdbcTemplate for db id:"+dbId);
         }
         return jdbcTemplate;
     }

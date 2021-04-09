@@ -6,9 +6,9 @@ import com.jte.sync2any.exception.ShouldNeverHappenException;
 import com.jte.sync2any.extract.KafkaMsgListener;
 import com.jte.sync2any.extract.SourceMetaExtract;
 import com.jte.sync2any.extract.SourceOriginDataExtract;
-import com.jte.sync2any.load.LoadService;
+import com.jte.sync2any.load.AbstractLoadService;
 import com.jte.sync2any.model.core.SyncState;
-import com.jte.sync2any.model.es.EsRequest;
+import com.jte.sync2any.model.es.CudRequest;
 import com.jte.sync2any.model.mysql.TableMeta;
 import com.jte.sync2any.transform.DumpTransform;
 import lombok.extern.slf4j.Slf4j;
@@ -36,7 +36,7 @@ public class StartListener {
     SourceMetaExtract sourceMetaExtract;
 
     @Resource
-    LoadService loadService;
+    AbstractLoadService loadService;
 
     @Resource
     SourceOriginDataExtract sourceOriginDataExtract;
@@ -61,7 +61,7 @@ public class StartListener {
         for(String key:tableRules.keySet())
         {
             TableMeta currTableMeta = tableRules.get(key);
-            System.out.println("dbName:"+currTableMeta.getDbName()+",tableName:"+currTableMeta.getTableName()+",esIndex:"+currTableMeta.getEsIndexName()+",topicName:"+currTableMeta.getTopicName());
+            System.out.println("dbName:"+currTableMeta.getDbName()+",tableName:"+currTableMeta.getTableName()+",esIndex:"+currTableMeta.getTargetTableName()+",topicName:"+currTableMeta.getTopicName());
         }
         System.out.println("=======================start river===========================");
         for(String key:tableRules.keySet())
@@ -70,9 +70,9 @@ public class StartListener {
             try
             {
                 //查看es的index是否存在且有数据
-                Long targetCount=loadService.countData(currTableMeta.getEsIndexName());
+                Long targetCount=loadService.countData(currTableMeta.getTargetDbId(),currTableMeta.getTargetTableName());
                 //查看源数据是否有数据
-                Long sourceCount=sourceMetaExtract.getDataCount(currTableMeta.getDbName(),currTableMeta.getTableName());
+                Long sourceCount=sourceMetaExtract.getDataCount(currTableMeta.getSourceDbId(),currTableMeta.getTableName());
                 if(sourceCount>0&&targetCount==0)
                 {
                     log.warn("start to dump origin data of "+currTableMeta.getDbName()+"."+currTableMeta.getTableName());
@@ -83,23 +83,23 @@ public class StartListener {
                     Iterator iterator=dumpTransform.transform(dataFile,currTableMeta);
                     while(iterator.hasNext())
                     {
-                        List<EsRequest> requestList= (List<EsRequest>) iterator.next();
+                        List<CudRequest> requestList= (List<CudRequest>) iterator.next();
                         if(requestList.size()>0)
                         {
                             long affectCount=loadService.batchAdd(requestList);
                             if(affectCount!=requestList.size())
                             {
-                                throw new ShouldNeverHappenException("sync origin data fail! tableName:"+currTableMeta.getTableName()+" esIndex:"+currTableMeta.getEsIndexName());
+                                throw new ShouldNeverHappenException("sync origin data fail! tableName:"+currTableMeta.getTableName()+" esIndex:"+currTableMeta.getTargetTableName());
                             }
                         }
                     }
                     log.warn("dump origin data is success,tableName:{},dbName:{},esIndex:{},topicName:{}",
-                            currTableMeta.getTableName(),currTableMeta.getDbName(),currTableMeta.getEsIndexName(),currTableMeta.getTopicName());
+                            currTableMeta.getTableName(),currTableMeta.getDbName(),currTableMeta.getTargetTableName(),currTableMeta.getTopicName());
                 }
                 else
                 {
                     log.warn("skip dump origin data,tableName:{},dbName:{},esIndex:{},topicName:{}",
-                            currTableMeta.getTableName(),currTableMeta.getDbName(),currTableMeta.getEsIndexName(),currTableMeta.getTopicName());
+                            currTableMeta.getTableName(),currTableMeta.getDbName(),currTableMeta.getTargetTableName(),currTableMeta.getTopicName());
                 }
                 //开始同步增量数据
                 currTableMeta.setState(SyncState.SYNCING);
@@ -114,7 +114,7 @@ public class StartListener {
             {
                 KafkaMsgListener.stopListener(currTableMeta,e);
                 log.error("start river is fail,tableName:{},dbName:{},esIndex:{},topicName:{}",
-                        currTableMeta.getTableName(),currTableMeta.getDbName(),currTableMeta.getEsIndexName(),currTableMeta.getTopicName(),e);
+                        currTableMeta.getTableName(),currTableMeta.getDbName(),currTableMeta.getTargetTableName(),currTableMeta.getTopicName(),e);
             }
         }
     }

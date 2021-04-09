@@ -16,19 +16,14 @@
 package com.jte.sync2any.model.mysql;
 
 import com.jte.sync2any.exception.ShouldNeverHappenException;
-import com.jte.sync2any.extract.KafkaMsgListener;
-import com.jte.sync2any.model.mq.TcMqMessage;
-import com.jte.sync2any.util.DbUtils;
-import com.jte.sync2any.util.JsonUtil;
+import com.jte.sync2any.model.mq.SubscribeDataProto;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 
+import javax.xml.bind.DatatypeConverter;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
+
+import static com.jte.sync2any.model.mq.SubscribeDataProto.DMLType.*;
 
 /**
  * The type Table records.
@@ -37,6 +32,12 @@ import java.util.Objects;
  */
 @Slf4j
 public class TableRecords {
+
+    /**
+     * 拼凑TableRecords需要分两种情况处理
+     */
+    private static String TYPE_WHERE="where";
+    private static String TYPE_FIELD="field";
 
     private transient TableMeta tableMeta;
 
@@ -56,7 +57,6 @@ public class TableRecords {
      */
     private List<Row> originRows = new ArrayList<>();
 
-    private TcMqMessage mqMessage;
 
     /**
      * Gets table name.
@@ -92,14 +92,6 @@ public class TableRecords {
      */
     public void setWhereRows(List<Row> whereRows) {
         this.whereRows = whereRows;
-    }
-
-    public TcMqMessage getMqMessage() {
-        return mqMessage;
-    }
-
-    public void setMqMessage(TcMqMessage mqMessage) {
-        this.mqMessage = mqMessage;
     }
 
     public List<Row> getFieldRows() {
@@ -218,72 +210,31 @@ public class TableRecords {
     /**
      * Build records table records.
      *
-     * @param meta     the tmeta
-     * @param mqMessage the result set
+     * @param tableMeta     the tmeta
+     * @param row    the result set
+     * @param dmlEvt    语句类型
      * @return the table records
      * @throws SQLException the sql exception
      */
-    public static TableRecords buildRecords(TableMeta meta, TcMqMessage mqMessage) {
-        if(Objects.isNull(meta))
+    public static TableRecords buildRecords(TableMeta tableMeta, SubscribeDataProto.RowChange row,SubscribeDataProto.DMLEvent dmlEvt) {
+        if(Objects.isNull(tableMeta))
         {
             throw new IllegalArgumentException("TableMeta is null");
         }
-        TableRecords records = new TableRecords(meta);
-        records.setTableName(meta.getTableName());
-        records.setMqMessage(mqMessage);
-        List<ColumnMeta> columnMetaList=meta.getAllColumnList();
-        int tableColumnSize=columnMetaList.size();
-        int fieldSize=mqMessage.getField().size();
-        int whereSize=mqMessage.getWhere().size();
+        TableRecords records = new TableRecords(tableMeta);
+        records.setTableName(tableMeta.getTableName());
+        List<ColumnMeta> columnMetaList=tableMeta.getAllColumnList();
 
-        if(KafkaMsgListener.EVENT_TYPE_DELETE.equals(mqMessage.getEventtypestr())&&whereSize!=tableColumnSize)
-        {
-            log.warn("column can't match when delete! tableName:{} meta:{} mqMessage:{}",meta.getTableName(),JsonUtil.objectToJson(meta),JsonUtil.objectToJson(mqMessage));
-        }
-        else if(KafkaMsgListener.EVENT_TYPE_INSERT.equals(mqMessage.getEventtypestr())&&fieldSize!=tableColumnSize)
-        {
-            log.warn("column can't match when insert! tableName:{} meta:{} mqMessage:{}",meta.getTableName(),JsonUtil.objectToJson(meta),JsonUtil.objectToJson(mqMessage));
-        }
-        else if(KafkaMsgListener.EVENT_TYPE_UPDATE.equals(mqMessage.getEventtypestr())&&
-                (fieldSize!=tableColumnSize||whereSize!=tableColumnSize))
-        {
-            log.warn("column can't match when update! tableName:{} meta:{} mqMessage:{}",meta.getTableName(),JsonUtil.objectToJson(meta),JsonUtil.objectToJson(mqMessage));
-        }
+        SubscribeDataProto.DMLType dmlType = dmlEvt.getDmlEventType();
+        //delete只要处理where部分
+        boolean shouldCalculateWhere=dmlType.equals(DELETE)||dmlType.equals(UPDATE);
+        //insert语句只要处理field部分
+        boolean shouldCalculateField=dmlType.equals(INSERT)||dmlType.equals(UPDATE);
 
-        boolean shouldCalculateWhere=KafkaMsgListener.EVENT_TYPE_DELETE.equals(mqMessage.getEventtypestr())||KafkaMsgListener.EVENT_TYPE_UPDATE.equals(mqMessage.getEventtypestr());
-        boolean shouldCalculateField=KafkaMsgListener.EVENT_TYPE_INSERT.equals(mqMessage.getEventtypestr())||KafkaMsgListener.EVENT_TYPE_UPDATE.equals(mqMessage.getEventtypestr());
-
-        List<Field> whereFields = new ArrayList<>(tableColumnSize);
-        List<Field> fieldFields = new ArrayList<>(tableColumnSize);
-        for(int i =0;i<columnMetaList.size();i++)
-        {
-            ColumnMeta currColumn=columnMetaList.get(i);
-
-            if(shouldCalculateWhere)
-            {
-                //处理缓存表结构比mq中的消息字段更多的情况
-                if(i>(mqMessage.getWhere().size()-1))
-                {
-                    continue;
-                }
-                String whereValue=processValue(mqMessage.getWhere().get(i),currColumn);
-                //对应mq中的where属性
-                Field whereField = createFieldValue(whereValue,currColumn,meta);
-                whereFields.add(whereField);
-            }
-
-            if(shouldCalculateField)
-            {
-                if(i>(mqMessage.getField().size()-1))
-                {
-                    continue;
-                }
-                String fieldValue=processValue(mqMessage.getField().get(i),currColumn);
-                //对应mq中的field属性
-                Field fieldField = createFieldValue(fieldValue,currColumn,meta);
-                fieldFields.add(fieldField);
-            }
-        }
+        List<Field> whereFields = new ArrayList<>(row.getOldColumnsCount());
+        List<Field> fieldFields = new ArrayList<>(row.getNewColumnsCount());
+        assembleFields(tableMeta,dmlEvt,whereFields,row,shouldCalculateWhere,TYPE_WHERE);
+        assembleFields(tableMeta,dmlEvt,fieldFields,row,shouldCalculateWhere,TYPE_FIELD);
 
         if(shouldCalculateWhere)
         {
@@ -301,6 +252,54 @@ public class TableRecords {
         return records;
     }
 
+    /**
+     * 拼装fields
+     * @param tableMeta
+     * @param dmlEvt
+     * @param fields
+     * @param row
+     * @param condition
+     * @param type
+     */
+    private static void assembleFields(TableMeta tableMeta, SubscribeDataProto.DMLEvent dmlEvt ,List<Field> fields,
+                                SubscribeDataProto.RowChange row,boolean condition,String type){
+        int columnCount=0;
+        if(TYPE_WHERE.equals(type))
+        {
+            columnCount = row.getOldColumnsCount();
+        }
+        else if(TYPE_FIELD.equals(type))
+        {
+            columnCount = row.getNewColumnsCount();
+        }
+        for (int i = 0; i < columnCount && condition; i++) {
+            SubscribeDataProto.Data col =null;
+            if(TYPE_WHERE.equals(type))
+            {
+                col = row.getOldColumns(i);
+            }
+            else if(TYPE_FIELD.equals(type))
+            {
+                col = row.getNewColumns(i);
+            }
+
+            if (col.getDataType() == SubscribeDataProto.DataType.NA)
+            {
+                continue;
+            }
+            SubscribeDataProto.Column colDef = dmlEvt.getColumns(i);
+            String columnName = colDef.getName().toLowerCase();
+            ColumnMeta currColumnMeta = tableMeta.getColumnMeta(columnName);
+            //TODO 如果更新了表结构，那么这个地方可能找不到最新的字段
+            if(!currColumnMeta.isInclude()){
+                //该字段从配置文件中排除了
+                continue;
+            }
+            Field newField = createFieldValue(decode(col),currColumnMeta,tableMeta);
+            fields.add(newField);
+        }
+    }
+
     private static Field createFieldValue(String value,ColumnMeta columnMeta,TableMeta meta){
         Field field = new Field();
         field.setName(columnMeta.getColumnName());
@@ -312,23 +311,32 @@ public class TableRecords {
         return field;
     }
 
-    private static String processValue(String value,ColumnMeta columnMeta){
-        if(StringUtils.isBlank(value)||TcMqMessage.NULL_STR.equals(value))
-        {
-            return null;
-        }
-        String myValue=DbUtils.delQuote(value);
-        // 当数据库字段为int、tinyint、smallint、bigint等int类型时。
-        // 数据库中的“-50800”发到ckafka出来会是“-50800 (18446744073709500816)”
-        if(columnMeta.getDataTypeName().toLowerCase().contains("int")&&myValue.startsWith("-")&&myValue.contains("("))
-        {
-            return value.substring(0,value.indexOf(" ("));
-        }
-        else
-        {
-            return myValue;
+
+    private static String decode(SubscribeDataProto.Data data) {
+        switch (data.getDataType()) {
+            case INT8:
+            case INT16:
+            case INT32:
+            case INT64:
+            case UINT8:
+            case UINT16:
+            case UINT32:
+            case UINT64:
+            case DECIMAL:
+            case FLOAT32:
+            case FLOAT64:
+                return data.getSv();
+            case STRING:
+                return "_binary'" + new String(data.getBv().toByteArray()) + "'";
+            case BYTES:
+                return "x'" + DatatypeConverter.printHexBinary(data.getBv().toByteArray()) + "'";
+            case NA:
+                return "DEFAULT";
+            case NIL:
+                return "NULL";
+            default:
+                throw new IllegalStateException("unsupported data type");
         }
     }
-
 
 }

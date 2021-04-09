@@ -12,9 +12,13 @@ public class SyncConfig {
      */
     private String targetType;
     /**
-     * 待同步的数据库名称
+     * 待同步的源数据库ID
      */
-    private String dbName;
+    private String sourceDbId;
+    /**
+     * 同步到的目标源数据库ID
+     */
+    private String targetDbId;
     /**
      * 要同步的表，多个表用逗号分隔，支持正则表达式
      */

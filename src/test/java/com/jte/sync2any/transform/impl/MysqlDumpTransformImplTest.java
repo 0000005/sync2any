@@ -2,7 +2,7 @@ package com.jte.sync2any.transform.impl;
 
 import com.jte.sync2any.Tester;
 import com.jte.sync2any.conf.RuleConfigParser;
-import com.jte.sync2any.model.es.EsRequest;
+import com.jte.sync2any.model.es.CudRequest;
 import com.jte.sync2any.model.mysql.TableMeta;
 import com.jte.sync2any.transform.DumpTransform;
 import org.junit.Before;
@@ -26,7 +26,7 @@ public class MysqlDumpTransformImplTest  extends Tester {
         MysqlDumpTransformImpl.FileEsRequest result= (MysqlDumpTransformImpl.FileEsRequest) dumpTransform.transform(file,tableMeta);
         while (result.hasNext())
         {
-            List<EsRequest> r=result.next();
+            List<CudRequest> r=result.next();
             System.out.println(r.size());
         }
     }

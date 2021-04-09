@@ -8,11 +8,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.ModelMap;
 import org.springframework.web.bind.annotation.GetMapping;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Slf4j
 @Controller
@@ -38,7 +34,7 @@ public class StateController {
             row.put("index",i+"");
             row.put("dbName",meta.getDbName());
             row.put("tableName",meta.getTableName());
-            row.put("esIndexName",meta.getEsIndexName());
+            row.put("esIndexName",meta.getTargetTableName());
             row.put("topicName",meta.getTopicName());
             row.put("topicGroup",meta.getTopicGroup());
             row.put("delay",delay/1000+"");

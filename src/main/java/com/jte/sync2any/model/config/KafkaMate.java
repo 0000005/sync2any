@@ -8,5 +8,7 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties("kafka")
 @Data
 public class KafkaMate {
-    private String adress;
+    private String address;
+    private String username;
+    private String password;
 }

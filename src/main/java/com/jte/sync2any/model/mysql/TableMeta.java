@@ -19,11 +19,7 @@ package com.jte.sync2any.model.mysql;
 import com.jte.sync2any.model.core.SyncState;
 import org.apache.commons.lang3.StringUtils;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
 
 /**
@@ -33,8 +29,13 @@ import java.util.Map.Entry;
  */
 public class TableMeta {
     private String tableName;
-    private String esIndexName;
+    /**
+     * 同步到目标表的名称
+     */
+    private String targetTableName;
     private String dbName;
+    private String sourceDbId;
+    private String targetDbId;
     /**
      * kafka topic name
      */
@@ -130,12 +131,12 @@ public class TableMeta {
         this.lastDataManipulateTime = lastDataManipulateTime;
     }
 
-    public String getEsIndexName() {
-        return esIndexName;
+    public String getTargetTableName() {
+        return targetTableName;
     }
 
-    public void setEsIndexName(String esIndexName) {
-        this.esIndexName = esIndexName;
+    public void setTargetTableName(String targetTableName) {
+        this.targetTableName = targetTableName;
     }
 
     public long getTpq() {
@@ -287,5 +288,21 @@ public class TableMeta {
 
     public void setLastAlarmTime(long lastAlarmTime) {
         this.lastAlarmTime = lastAlarmTime;
+    }
+
+    public String getSourceDbId() {
+        return sourceDbId;
+    }
+
+    public void setSourceDbId(String sourceDbId) {
+        this.sourceDbId = sourceDbId;
+    }
+
+    public String getTargetDbId() {
+        return targetDbId;
+    }
+
+    public void setTargetDbId(String targetDbId) {
+        this.targetDbId = targetDbId;
     }
 }

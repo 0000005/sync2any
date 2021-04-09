@@ -1,12 +1,12 @@
-package com.jte.sync2any.load.es;
+package com.jte.sync2any.load;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.jte.sync2any.exception.ShouldNeverHappenException;
 import com.jte.sync2any.extract.KafkaMsgListener;
-import com.jte.sync2any.load.LoadService;
+import com.jte.sync2any.model.config.Conn;
+import com.jte.sync2any.model.es.CudRequest;
 import com.jte.sync2any.model.es.EsDateType;
-import com.jte.sync2any.model.es.EsRequest;
 import com.jte.sync2any.model.mysql.TableMeta;
 import com.jte.sync2any.util.JsonUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -40,14 +40,15 @@ import java.util.Objects;
 
 @Slf4j
 @Service
-public class EsLoadServiceImpl implements LoadService {
+public class EsLoadServiceImpl extends AbstractLoadService {
 
     @Resource
-    RestHighLevelClient client;
+    Map<String,Object> allTargetDatasource;
+
     private final Map<String,Long> cacheCount=new HashMap<>();
 
     @Override
-    public int operateData(EsRequest request) throws IOException {
+    public int operateData(CudRequest request) throws IOException {
         checkAndCreateStorage(request.getTableMeta());
         if(KafkaMsgListener.EVENT_TYPE_INSERT.equalsIgnoreCase(request.getOperationType()))
         {
@@ -67,10 +68,12 @@ public class EsLoadServiceImpl implements LoadService {
         }
     }
 
+
     @Override
-    public int addData(EsRequest request) throws IOException {
-        IndexRequest addIndex = new IndexRequest(request.getIndex());
-        addIndex.id(request.getDocId());
+    public int addData(CudRequest request) throws IOException {
+        RestHighLevelClient client = (RestHighLevelClient) getTargetDsByDbId(allTargetDatasource,request.getTableMeta().getTargetDbId());
+        IndexRequest addIndex = new IndexRequest(request.getTable());
+        addIndex.id(request.getPkValueStr());
         addIndex.source(JsonUtil.objectToJson(request.getParameters()), XContentType.JSON);
         IndexResponse indexResponse = client.index(addIndex, RequestOptions.DEFAULT);
         if(indexResponse.status().equals(RestStatus.OK)&&indexResponse.getShardInfo().getSuccessful()>0)
@@ -81,8 +84,9 @@ public class EsLoadServiceImpl implements LoadService {
     }
 
     @Override
-    public int deleteData(EsRequest request) throws IOException {
-        DeleteRequest deleteIndex = new DeleteRequest(request.getIndex(),request.getDocId());
+    public int deleteData(CudRequest request) throws IOException {
+        RestHighLevelClient client = (RestHighLevelClient) getTargetDsByDbId(allTargetDatasource,request.getTableMeta().getTargetDbId());
+        DeleteRequest deleteIndex = new DeleteRequest(request.getTable(),request.getPkValueStr());
         DeleteResponse deleteResponse = client.delete(deleteIndex, RequestOptions.DEFAULT);
         if(deleteResponse.status().equals(RestStatus.OK)&&deleteResponse.getShardInfo().getSuccessful()>0)
         {
@@ -92,8 +96,9 @@ public class EsLoadServiceImpl implements LoadService {
     }
 
     @Override
-    public int updateData(EsRequest request) throws IOException {
-        UpdateRequest updateIndex = new UpdateRequest(request.getIndex(),request.getDocId());
+    public int updateData(CudRequest request) throws IOException {
+        RestHighLevelClient client = (RestHighLevelClient) getTargetDsByDbId(allTargetDatasource,request.getTableMeta().getTargetDbId());
+        UpdateRequest updateIndex = new UpdateRequest(request.getTable(),request.getPkValueStr());
         updateIndex.doc(JsonUtil.objectToJson(request.getParameters()), XContentType.JSON);
         updateIndex.docAsUpsert(true);
         UpdateResponse updateResponse = client.update(updateIndex, RequestOptions.DEFAULT);
@@ -105,11 +110,12 @@ public class EsLoadServiceImpl implements LoadService {
     }
 
     @Override
-    public int batchAdd(List<EsRequest> requestList) throws IOException {
+    public int batchAdd(List<CudRequest> requestList) throws IOException {
+        RestHighLevelClient client = (RestHighLevelClient) getTargetDsByDbId(allTargetDatasource,requestList.get(0).getTableMeta().getTargetDbId());
         BulkRequest bulkRequest = new BulkRequest();
         requestList.forEach(r->{
-            IndexRequest addIndex = new IndexRequest(r.getIndex());
-            addIndex.id(r.getDocId());
+            IndexRequest addIndex = new IndexRequest(r.getTable());
+            addIndex.id(r.getPkValueStr());
             addIndex.source(JsonUtil.objectToJson(r.getParameters()), XContentType.JSON);
             bulkRequest.add(addIndex);
         });
@@ -127,27 +133,28 @@ public class EsLoadServiceImpl implements LoadService {
      * 这么做的原因是，为了多个分表（rule使用正则表达式）同步到同一个esIndex时，第一次dump数据的完整性。不然只会同步第一个分表的数据。
      * ！！！！注意！！！！
      * 查看es的index是否存在且有数据。
-     * @param esIndex
+     * @param table
      * @return
      * @throws IOException
      */
     @Override
-    public Long countData(String esIndex) throws IOException {
-        Long count=cacheCount.get(esIndex);
+    public Long countData(String dbId,String table) throws IOException {
+        RestHighLevelClient client = (RestHighLevelClient) getTargetDsByDbId(allTargetDatasource,dbId);
+        Long count=cacheCount.get(table);
         if(Objects.nonNull(count))
         {
             return count;
         }
-        if(!isIndexExists(esIndex))
+        if(!isIndexExists(dbId, table))
         {
-            cacheCount.put(esIndex,0L);
+            cacheCount.put(table,0L);
             return 0L;
         }
-        CountRequest countRequest = new CountRequest(esIndex);
+        CountRequest countRequest = new CountRequest(table);
         countRequest.query(QueryBuilders.matchAllQuery());
         CountResponse countResponse = client.count(countRequest, RequestOptions.DEFAULT);
         count= countResponse.getCount();
-        cacheCount.put(esIndex,count);
+        cacheCount.put(table,count);
         return count;
     }
 
@@ -158,12 +165,13 @@ public class EsLoadServiceImpl implements LoadService {
      */
     @Override
     public void checkAndCreateStorage(TableMeta tableMeta) throws IOException {
-        String indexName=tableMeta.getEsIndexName();
-        String existsEvidence="es$"+tableMeta.getDbName()+"$"+tableMeta.getTableName();
+        RestHighLevelClient client = (RestHighLevelClient) getTargetDsByDbId(allTargetDatasource,tableMeta.getTargetDbId());
+        String indexName=tableMeta.getTargetTableName();
+        String existsEvidence= Conn.DB_TYPE_ES+"$"+tableMeta.getTargetDbId()+"$"+tableMeta.getTableName();
         if(LOAD_STORAGE.contains(existsEvidence)){
             return;
         }
-        boolean indexExists= isIndexExists(indexName);
+        boolean indexExists= isIndexExists(tableMeta.getTargetDbId(),indexName);
         if(!indexExists)
         {
             String mappingJson=generateMappingJson(tableMeta);
@@ -188,7 +196,8 @@ public class EsLoadServiceImpl implements LoadService {
         }
     }
 
-    public boolean isIndexExists(String indexName) throws IOException {
+    public boolean isIndexExists(String dbId,String indexName) throws IOException {
+        RestHighLevelClient client = (RestHighLevelClient) getTargetDsByDbId(allTargetDatasource,dbId);
         GetIndexRequest indexRequest = new GetIndexRequest(indexName);
         return client.indices().exists(indexRequest,RequestOptions.DEFAULT);
     }
@@ -240,7 +249,7 @@ public class EsLoadServiceImpl implements LoadService {
             {
                 typeValue=mapper.createObjectNode().put("type",c.getEsDataType());
             }
-            property.set(c.getEsColumnName(),typeValue);
+            property.set(c.getTargetColumnName(),typeValue);
         });
         return properties.toString();
     }

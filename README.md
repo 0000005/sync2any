@@ -34,22 +34,26 @@ sync2any可以借助腾讯云数据订阅（DTS）将腾讯云数据库（mysql�
 
 #【必填】腾讯云CKAFKA配置
 kafka:
-  adress: 127.0.0.1:32768
+  address: 127.0.0.1:32768
+  username: test
+  password: test
 
 #【必填】同步目标目标的基本配置（支持mysql和es）
 target.datasources:
   -
+    #【必填】标识数据源，每个必须不一样
+    db-id: 1
     #目标数据源的类型（可以为es或mysql）
     type: es
-    db-name: test
     #当为es时可以填写多个地址，以逗号分割
     url: 192.168.10.208:9200,192.168.10.209:9200
     username: elastic
     password: changeme
   -
+    #【必填】标识数据源，每个必须不一样
+    db-id: 2
     #目标数据源的类型（可以为es或mysql）
     type: mysql
-    db-name: test
     url: jdbc:mysql://127.0.0.1:3306/test?useUnicode=true&useSSL=false&characterEncoding=UTF-8&autoReconnect=true&failOverReadOnly=false&useOldAliasMetadataBehavior=true&allowMultiQueries=true&serverTimezone=Hongkong
     username: root
     password: root
@@ -58,7 +62,8 @@ target.datasources:
 source.mysql:
   datasources:
     -
-      db-name: test
+      #【必填】标识数据源，每个必须不一样
+      db-id:1
       url: jdbc:mysql://127.0.0.1:3306/test?useUnicode=true&useSSL=false&characterEncoding=UTF-8&autoReconnect=true&failOverReadOnly=false&useOldAliasMetadataBehavior=true&allowMultiQueries=true&serverTimezone=Hongkong
       username: test
       password: test
@@ -80,8 +85,10 @@ sync2any:
     -
       #【必填】同步目的地的类型【es/mysql】
       target-type: es
-      #【必填】待同步的数据库名称
-      db-name: test
+      #【必填】待同步的源数据库ID
+      source-db-id: 1
+      #【必填】同步到的目标源数据库ID
+      target-db-id: 2
       #【必填】要同步的表名，支持正则表达式，多个表名用逗号分隔
       sync-tables: "t_member,t_member_order_[0-9]{10}"
       #【选填】延迟超过60秒，将会触发告警

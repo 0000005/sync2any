@@ -8,11 +8,7 @@ import com.wangfengta.api.WftClient;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -43,7 +39,7 @@ public class MonitorTask implements  Runnable {
             //先过滤数据库
             Set<String> metaKeySet=tableRules.keySet()
                     .stream()
-                    .filter(k->k.startsWith(config.getDbName()+"$"))
+                    .filter(k->k.startsWith(config.getSourceDbId()+"$"))
                     .collect(Collectors.toSet());
             //再过滤表
             for(String metaKey:metaKeySet)
@@ -128,7 +124,7 @@ public class MonitorTask implements  Runnable {
         Map<String,String> param = new HashMap<>(10);
         param.put("tables",meta.getTableName());
         param.put("dbName",meta.getDbName());
-        param.put("indexName",meta.getEsIndexName());
+        param.put("indexName",meta.getTargetTableName());
         param.put(key,value);
         return param;
     }

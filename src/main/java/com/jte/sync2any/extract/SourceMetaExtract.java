@@ -5,7 +5,7 @@ import com.jte.sync2any.model.mysql.TableMeta;
 import java.util.List;
 
 public interface SourceMetaExtract {
-    TableMeta getTableMate(String dbName,String tableName);
+    TableMeta getTableMate(String dbId,String tableName);
 
     /**
      * 获取源数据的行数
@@ -13,12 +13,12 @@ public interface SourceMetaExtract {
      * @param tableName
      * @return
      */
-    Long getDataCount(String dbName,String tableName);
+    Long getDataCount(String dbId,String tableName);
 
     /**
-     *  获取表名
-     * @param dbName
+     *  获取该数据库的所有表名
+     * @param dbId
      * @return
      */
-    List<String> getAllTableName(String dbName);
+    List<String> getAllTableName(String dbId);
 }

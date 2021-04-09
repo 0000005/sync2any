@@ -1,14 +1,26 @@
 package com.jte.sync2any.transform;
 
-import com.jte.sync2any.model.es.EsRequest;
+import com.jte.sync2any.exception.ShouldNeverHappenException;
+import com.jte.sync2any.extract.KafkaMsgListener;
+import com.jte.sync2any.model.es.CudRequest;
+import com.jte.sync2any.model.mysql.ColumnMeta;
+import com.jte.sync2any.model.mysql.Field;
 import com.jte.sync2any.model.mysql.TableRecords;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 用于解析mq收到的消息
  *
  */
-public interface RecordsTransform {
+public abstract class RecordsTransform {
     /**
+     *
+     * 将TableRecords转换为目标数据库可使用的中间类型。
+     *
      * 考虑到MQ中的数据有“毛刺”，且数据库结构的变更在MQ消息中并不能明显的体现出值对应的字段。
      * 我们规定：
      * 1、当往数据库加字段时，必须将字段加到最末尾，切记不可将新字段插入旧的字段前。
@@ -27,6 +39,98 @@ public interface RecordsTransform {
      * @param records
      * @return
      */
-    EsRequest transform(TableRecords records);
+    public abstract CudRequest transform(TableRecords records);
+
+
+    /**
+     * 获取对应的参数值。key为列名，value为值
+     * 当是delete时，参数值应该获取where部分。因为要根据条件（主键）删除数据
+     * 当是update\insert时，参数应该是field部分。因为要修改（根据主键）或插入数据。
+     *
+     * @param records 对应数据库的一条记录
+     * @return
+     */
+    protected Map<String, Object> getParameters(TableRecords records){
+        Map<String, Object> params= new HashMap<>(70);
+
+        List<Map<String, Field>> rows = new ArrayList<>();
+        String eventTypeStr=records.getMqMessage().getEventtypestr();
+        if(KafkaMsgListener.EVENT_TYPE_DELETE.equalsIgnoreCase(eventTypeStr))
+        {
+            //以where为主
+            rows = records.pkRows(records.getWhereRows());
+        }
+        else if(KafkaMsgListener.EVENT_TYPE_UPDATE.equalsIgnoreCase(eventTypeStr)||
+                KafkaMsgListener.EVENT_TYPE_INSERT.equalsIgnoreCase(eventTypeStr))
+        {
+            //以field为主
+            rows = records.parseToMap(records.getFieldRows());
+        }
+        if(rows.isEmpty())
+        {
+            throw new ShouldNeverHappenException("can't find parameters!");
+        }
+        Map<String,Field> currRow=rows.get(0);
+        Map<String, ColumnMeta> columnMetaMap=records.getTableMeta().getAllColumnMap();
+        for(String columnName:currRow.keySet())
+        {
+            ColumnMeta columnMeta=columnMetaMap.get(columnName);
+            params.put(columnMeta.getTargetColumnName(),currRow.get(columnName).getValue());
+        }
+        return params;
+    }
+
+    /**
+     * 以Map的形式获取主键值
+     * @param records
+     * @return
+     */
+    protected Map<String,Field> getPkValueMap(TableRecords records)
+    {
+        List<Map<String,Field>> rows = new ArrayList<>();
+        String eventTypeStr=records.getMqMessage().getEventtypestr();
+        if(KafkaMsgListener.EVENT_TYPE_DELETE.equalsIgnoreCase(eventTypeStr)||
+                KafkaMsgListener.EVENT_TYPE_UPDATE.equalsIgnoreCase(eventTypeStr))
+        {
+            //以where为主
+            rows = records.pkRows(records.getWhereRows());
+        }
+        else if(KafkaMsgListener.EVENT_TYPE_INSERT.equalsIgnoreCase(eventTypeStr))
+        {
+            //以field为主
+            rows = records.pkRows(records.getFieldRows());
+        }
+        if(rows.isEmpty())
+        {
+            throw new ShouldNeverHappenException("can't determine docId!");
+        }
+
+        //目前只考虑1行的情况
+        Map<String,Field> pkRow=rows.get(0);
+        return pkRow;
+    }
+
+
+    /**
+     * 以字符串的形式获取主键值
+     * @param records
+     * @return
+     */
+    protected String getPkValueStr(TableRecords records)
+    {
+        StringBuilder pkValueStr=new StringBuilder();
+        Map<String,Field> pkRow=getPkValueMap(records);
+        int index=0;
+        for(String columnName:pkRow.keySet())
+        {
+            if(index>0)
+            {
+                pkValueStr.append("_");
+            }
+            pkValueStr.append(pkRow.get(columnName).getValue());
+            index++;
+        }
+        return pkValueStr.toString();
+    }
 
 }

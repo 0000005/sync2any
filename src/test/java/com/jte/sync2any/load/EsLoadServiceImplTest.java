@@ -1,8 +1,8 @@
-package com.jte.sync2any.load.es;
+package com.jte.sync2any.load;
 
 import com.jte.sync2any.Tester;
 import com.jte.sync2any.conf.RuleConfigParser;
-import com.jte.sync2any.model.es.EsRequest;
+import com.jte.sync2any.model.es.CudRequest;
 import com.jte.sync2any.model.mysql.TableMeta;
 import com.jte.sync2any.transform.RecordsTransform;
 import lombok.extern.slf4j.Slf4j;
@@ -16,7 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
-public class EsOperationTest extends Tester {
+public class EsLoadServiceImplTest extends Tester {
 
     public final String updateMsg="{\"prefix\":\"Xpyba\",\"filename\":\"/data/tdengine/log/4364/dblogs/bin/binlog.000081\",\"logtype\":\"mysqlbinlog\",\"eventtype\":31,\"eventtypestr\":\"update\",\"db\":\"test\",\"table\":\"wzh\",\"localip\":\"\",\"localport\":0,\"begintime\":1586502642,\"gtid\":\"d3df5e98-0a88-11ea-bf79-246e965b5b98:17022935\",\"serverid\":\"3111177740\",\"event_index\":\"4\",\"gtid_commitid\":\"\",\"gtid_flag2\":\"0\",\"where\":[\"13\",\"'尹文俊'\",\"'计算机'\",\"'2020-04-10 15:09:46'\"],\"field\":[\"13\",\"'尹文俊和冯豆'\",\"'计算机、旅游'\",\"'2020-04-01 15:09:46'\"],\"sub_event_index\":\"1\",\"sequence_num\":\"15267\",\"orgoffset\":65664364}\n";
 
@@ -35,10 +35,10 @@ public class EsOperationTest extends Tester {
     @Resource
     RuleConfigParser ruleParser;
 
-    private EsRequest insertRequest;
-    private EsRequest insertRequest2;
-    private EsRequest updateRequest;
-    private EsRequest deleteRequest;
+    private CudRequest insertRequest;
+    private CudRequest insertRequest2;
+    private CudRequest updateRequest;
+    private CudRequest deleteRequest;
     private TableMeta tableMeta;
 
     @Before
@@ -72,7 +72,7 @@ public class EsOperationTest extends Tester {
 
     @Test
     public void isIndexExistsTest() throws IOException {
-        boolean isExists=esLoadService.isIndexExists("test-wzh");
+        boolean isExists=esLoadService.isIndexExists("1","test-wzh");
         System.out.println(isExists);
     }
 
@@ -92,7 +92,7 @@ public class EsOperationTest extends Tester {
 
     @Test
     public void batchAddTest() throws IOException{
-        List<EsRequest> addList = new ArrayList<>();
+        List<CudRequest> addList = new ArrayList<>();
         addList.add(insertRequest);
         addList.add(insertRequest2);
         Assert.assertEquals(2,esLoadService.batchAdd(addList));

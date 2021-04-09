@@ -5,7 +5,7 @@ import com.alibaba.druid.sql.ast.SQLStatement;
 import com.alibaba.druid.sql.ast.statement.SQLInsertStatement;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlInsertStatement;
 import com.alibaba.druid.sql.dialect.mysql.parser.MySqlStatementParser;
-import com.jte.sync2any.model.es.EsRequest;
+import com.jte.sync2any.model.es.CudRequest;
 import com.jte.sync2any.model.mysql.ColumnMeta;
 import com.jte.sync2any.model.mysql.TableMeta;
 import com.jte.sync2any.transform.DumpTransform;
@@ -16,14 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.Objects;
-import java.util.Scanner;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.jte.sync2any.extract.KafkaMsgListener.EVENT_TYPE_INSERT;
@@ -81,15 +74,15 @@ public class MysqlDumpTransformImpl implements DumpTransform {
                 {
                     value=null;
                 }
-                params.put(columnMeta.getEsColumnName(),DbUtils.delQuote(value));
+                params.put(columnMeta.getTargetColumnName(),DbUtils.delQuote(value));
             }
         }
         return params;
     }
 
-    private List<EsRequest> sqlToEsRequest(String line, TableMeta tableMeta)
+    private List<CudRequest> sqlToEsRequest(String line, TableMeta tableMeta)
     {
-        List<EsRequest> requestList = new ArrayList<>();
+        List<CudRequest> requestList = new ArrayList<>();
         if(line.startsWith(SQL_START_FLAG))
         {
             MySqlStatementParser parser = new MySqlStatementParser(line);
@@ -97,13 +90,13 @@ public class MysqlDumpTransformImpl implements DumpTransform {
             MySqlInsertStatement insert = (MySqlInsertStatement)statement;
 
             for(SQLInsertStatement.ValuesClause values:insert.getValuesList()){
-                EsRequest esRequest = new EsRequest();
-                esRequest.setDocId(getDocId(values,tableMeta));
-                esRequest.setIndex(tableMeta.getEsIndexName());
-                esRequest.setOperationType(EVENT_TYPE_INSERT);
-                esRequest.setParameters(getParameters(values,tableMeta));
-                esRequest.setTableMeta(tableMeta);
-                requestList.add(esRequest);
+                CudRequest cudRequest = new CudRequest();
+                cudRequest.setPkValueStr(getDocId(values,tableMeta));
+                cudRequest.setTable(tableMeta.getTargetTableName());
+                cudRequest.setOperationType(EVENT_TYPE_INSERT);
+                cudRequest.setParameters(getParameters(values,tableMeta));
+                cudRequest.setTableMeta(tableMeta);
+                requestList.add(cudRequest);
             }
         }
         return requestList;
@@ -166,7 +159,7 @@ public class MysqlDumpTransformImpl implements DumpTransform {
         }
 
         @Override
-        public List<EsRequest> next() {
+        public List<CudRequest> next() {
             if (hasNext()) {
                 return dt.sqlToEsRequest(data.nextLine(),tableMeta);
             }

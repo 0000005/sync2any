@@ -19,14 +19,7 @@ import org.springframework.context.annotation.Configuration;
 
 import javax.annotation.Resource;
 import java.sql.Types;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -44,7 +37,7 @@ public class RuleConfigParser {
 
 
     /**
-     * key: dbName$tableName
+     * key: dbId$tableName
      * value: TableMeta
      */
     public static final Cache<String, TableMeta> RULES_MAP = CacheBuilder.newBuilder().build();
@@ -58,49 +51,47 @@ public class RuleConfigParser {
 
     public void initRules() {
         this.checkConfig();
-        sourceMysqlDb.getDatasources().forEach(db->{
-            //获取所有的表名
-            List<String> tableNameList= sourceMetaExtract.getAllTableName(db.getDbName());
-            //找到当前数据库的所有规则
-            List<SyncConfig> currSyncConfigList=sync2any.getSyncConfigList().stream()
-                    .filter(s->db.getDbName().equalsIgnoreCase(s.getDbName()))
-                    .collect(Collectors.toList());
-            for(int r=0;r<currSyncConfigList.size();r++)
-            {
-                SyncConfig config=currSyncConfigList.get(r);
-                //查看表名是否匹配
-                String [] syncTableArray =config.getSyncTables().split(",");
-                for(String syncTableName :syncTableArray)
-                {
-                    List<String> matchTableName=tableNameList.stream()
-                            .filter(rt->Pattern.matches(syncTableName, rt))
-                            .collect(Collectors.toList());
-                    //接下来解析rule
-                    for(String realTableName:matchTableName)
-                    {
-                        String key=config.getDbName()+"$"+realTableName;
-                        //寻找到了匹配的表
-                        TableMeta tableMeta=RULES_MAP.getIfPresent(key);
-                        if(Objects.nonNull(tableMeta) )
-                        {
-                            continue;
-                        }
-                        //该表还未解析规则，寻找规则
-                        List<Rule> ruleList= Optional.ofNullable(config.getRules()).orElse(Collections.emptyList());
-                        Rule rule=ruleList.stream()
-                                .filter(tr -> Pattern.matches(tr.getTable(),realTableName))
-                                .findFirst().orElse(null);
-                        tableMeta = sourceMetaExtract.getTableMate(db.getDbName(),realTableName);
-                        tableMeta.setTopicName(config.getMq().getTopicName());
-                        tableMeta.setTopicGroup(config.getMq().getTopicGroup());
 
-                        //填充匹配规则
-                        parseColumnMeta(tableMeta,rule);
-                        RULES_MAP.put(key,tableMeta);
+        List<SyncConfig> syncConfigList = sync2any.getSyncConfigList();
+        for(int r=0;r<sync2any.getSyncConfigList().size();r++)
+        {
+            SyncConfig config = syncConfigList.get(r);
+            //获取所有的表名
+            List<String> tableNameList= sourceMetaExtract.getAllTableName(config.getSourceDbId());
+            //查看表名是否匹配
+            String [] syncTableArray =config.getSyncTables().split(",");
+            for(String syncTableName :syncTableArray)
+            {
+                List<String> matchTableName=tableNameList.stream()
+                        .filter(rt->Pattern.matches(syncTableName, rt))
+                        .collect(Collectors.toList());
+                //接下来解析rule
+                for(String realTableName:matchTableName)
+                {
+                    String key=config.getSourceDbId()+"$"+realTableName;
+                    //寻找到了匹配的表
+                    TableMeta tableMeta=RULES_MAP.getIfPresent(key);
+                    if(Objects.nonNull(tableMeta) )
+                    {
+                        continue;
                     }
+                    //该表还未解析规则，寻找规则
+                    List<Rule> ruleList= Optional.ofNullable(config.getRules()).orElse(Collections.emptyList());
+                    Rule rule=ruleList.stream()
+                            .filter(tr -> Pattern.matches(tr.getTable(),realTableName))
+                            .findFirst().orElse(null);
+                    tableMeta = sourceMetaExtract.getTableMate(config.getSourceDbId(),realTableName);
+                    tableMeta.setTopicName(config.getMq().getTopicName());
+                    tableMeta.setTopicGroup(config.getMq().getTopicGroup());
+                    tableMeta.setSourceDbId(config.getSourceDbId());
+                    tableMeta.setTargetDbId(config.getTargetDbId());
+
+                    //填充匹配规则
+                    parseColumnMeta(tableMeta,rule);
+                    RULES_MAP.put(key,tableMeta);
                 }
             }
-        });
+        }
 
     }
 
@@ -108,7 +99,7 @@ public class RuleConfigParser {
     {
         if(StringUtils.isBlank(sync2any.getMysqldump()))
         {
-            log.warn("mysqldump 未配置，将不会dump原始数据.");
+            log.warn("mysqldump 未配置，将不会同步原始数据.");
         }
         if(sync2any.getSyncConfigList().size()==0)
         {
@@ -122,7 +113,7 @@ public class RuleConfigParser {
                 log.error("请填写target-type配置项,可选的值有[es,mysql]！");
                 System.exit(500);
             }
-            if(StringUtils.isBlank(s.getDbName()))
+            if(StringUtils.isBlank(s.getSourceDbId()))
             {
                 log.error("请填写sync-config-list下的db-name配置项！");
                 System.exit(500);
@@ -138,6 +129,7 @@ public class RuleConfigParser {
                 System.exit(500);
             }
             else if(topicNameSet.contains(s.getMq().getTopicName())){
+                //因为要通过topicName来区分不同的任务。
                 log.error("禁止多个任务监听同一个topic！");
                 System.exit(500);
             }else{
@@ -219,12 +211,12 @@ public class RuleConfigParser {
         if(Objects.isNull(rule))
         {
             //全部使用默认规则
-            tableMeta.setEsIndexName(tableMeta.getDbName().toLowerCase()+"-"+tableMeta.getTableName().toLowerCase());
+            tableMeta.setTargetTableName(tableMeta.getDbName().toLowerCase()+"-"+tableMeta.getTableName().toLowerCase());
             for(String columnName:tableMeta.getAllColumnMap().keySet())
             {
                 ColumnMeta columnMeta=tableMeta.getAllColumnMap().get(columnName);
                 //未配置规则，统一化为小写
-                columnMeta.setEsColumnName(columnName.toLowerCase());
+                columnMeta.setTargetColumnName(columnName.toLowerCase());
                 mapDataTypeOfEs(columnMeta);
             }
             return tableMeta;
@@ -234,12 +226,12 @@ public class RuleConfigParser {
         //计算规则
         if(StringUtils.isNotBlank(rule.getIndexTable()))
         {
-            tableMeta.setEsIndexName(rule.getIndexTable());
+            tableMeta.setTargetTableName(rule.getIndexTable());
         }
         else
         {
             //默认index命名规则：dbName-tableName
-            tableMeta.setEsIndexName(tableMeta.getDbName().toLowerCase()+"-"+tableMeta.getTableName().toLowerCase());
+            tableMeta.setTargetTableName(tableMeta.getDbName().toLowerCase()+"-"+tableMeta.getTableName().toLowerCase());
         }
         if(StringUtils.isNotBlank(rule.getFieldFilter()))
         {
@@ -275,7 +267,7 @@ public class RuleConfigParser {
                 if(StringUtils.isBlank(mapValue))
                 {
                     //未配置规则，统一化为小写
-                    columnMeta.setEsColumnName(columnName.toLowerCase());
+                    columnMeta.setTargetColumnName(columnName.toLowerCase());
                     mapDataTypeOfEs(columnMeta);
                     continue;
                 }
@@ -286,11 +278,11 @@ public class RuleConfigParser {
                     String [] mapValueArray=mapValue.split(",");
                     if(StringUtils.isNotBlank(mapValueArray[0]))
                     {
-                        columnMeta.setEsColumnName(mapValueArray[0]);
+                        columnMeta.setTargetColumnName(mapValueArray[0]);
                     }
                     else
                     {
-                        columnMeta.setEsColumnName(columnName.toLowerCase());
+                        columnMeta.setTargetColumnName(columnName.toLowerCase());
                     }
                     if(StringUtils.isNotBlank(mapValueArray[1]))
                     {
@@ -305,7 +297,7 @@ public class RuleConfigParser {
                 else
                 {
                     //仅有名称映射规则
-                    columnMeta.setEsColumnName(mapValue);
+                    columnMeta.setTargetColumnName(mapValue);
                     mapDataTypeOfEs(columnMeta);
                 }
             }
@@ -316,7 +308,7 @@ public class RuleConfigParser {
             {
                 ColumnMeta columnMeta=tableMeta.getAllColumnMap().get(columnName);
                 //未配置规则，统一化为小写
-                columnMeta.setEsColumnName(columnName.toLowerCase());
+                columnMeta.setTargetColumnName(columnName.toLowerCase());
                 mapDataTypeOfEs(columnMeta);
             }
         }

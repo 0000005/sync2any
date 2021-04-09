@@ -1,7 +1,6 @@
 package com.jte.sync2any.conf;
 
 import com.jte.sync2any.extract.KafkaMsgListener;
-import com.jte.sync2any.load.LoadService;
 import com.jte.sync2any.model.config.KafkaMate;
 import com.jte.sync2any.model.config.Mq;
 import com.jte.sync2any.model.config.Sync2any;
@@ -10,7 +9,10 @@ import com.jte.sync2any.model.mysql.TableMeta;
 import com.jte.sync2any.transform.RecordsTransform;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.common.config.SaslConfigs;
+import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
@@ -35,51 +37,68 @@ public class KafkaConfig {
     Sync2any sync2any;
     @Resource
     RecordsTransform transform;
-    @Resource
-    LoadService load;
-
 
     public static final Set<KafkaMessageListenerContainer> KAFKA_SET= new HashSet<>();
 
     @PostConstruct
     public void initKafka() {
-        if(StringUtils.isBlank(kafkaMate.getAdress()))
+        if(StringUtils.isBlank(kafkaMate.getAddress()))
         {
             log.error("请填写kafka的相关配置。");
             System.exit(500);
         }
         sync2any.getSyncConfigList().forEach(sdb->{
             ContainerProperties containerProps = new ContainerProperties(sdb.getMq().getTopicName());
+            //手动控制提交，每消费完一条消息就提交一次
             containerProps.setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
-            containerProps.setMessageListener(new KafkaMsgListener(transform,load));
-            KafkaMessageListenerContainer<String, String> container = createContainer(sdb.getMq(),containerProps);
-            container.setBeanName(sdb.getDbName().toLowerCase()+"_"+sdb.getMq().getTopicGroup()+"_"+sdb.getMq().getTopicName());
+            //异步提交
+            containerProps.setSyncCommits(false);
+            containerProps.setMessageListener(new KafkaMsgListener(transform,sync2any));
+
+            KafkaMessageListenerContainer<String, byte[]> container = createContainer(sdb.getMq(),containerProps);
+            container.setBeanName(sdb.getSourceDbId().toLowerCase()+"_"+sdb.getMq().getTopicGroup()+"_"+sdb.getMq().getTopicName());
             KAFKA_SET.add(container);
         });
     }
 
 
-    private KafkaMessageListenerContainer<String, String> createContainer(Mq mq,ContainerProperties containerProps) {
+    private KafkaMessageListenerContainer<String, byte[]> createContainer(Mq mq,ContainerProperties containerProps) {
         Map<String, Object> props = consumerProps(mq);
-        DefaultKafkaConsumerFactory<String, String> cf = new DefaultKafkaConsumerFactory<String, String>(props);
-        KafkaMessageListenerContainer<String, String> container = new KafkaMessageListenerContainer<>(cf, containerProps);
+        DefaultKafkaConsumerFactory<String, byte[]> cf = new DefaultKafkaConsumerFactory<>(props);
+        KafkaMessageListenerContainer<String, byte[]> container = new KafkaMessageListenerContainer<>(cf, containerProps);
         return container;
     }
 
     private Map<String, Object> consumerProps(Mq mq) {
         Map<String, Object> props = new HashMap<>(20);
-        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaMate.getAdress());
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaMate.getAddress());
         props.put(ConsumerConfig.GROUP_ID_CONFIG, mq.getTopicGroup());
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class);
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         props.put(ConsumerConfig.ALLOW_AUTO_CREATE_TOPICS_CONFIG, false);
-        //每次最多拉取4000条数据
-        props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 4000);
+        //只读取已经提交的消息
+        props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
+
+        //https://blog.csdn.net/a953713428/article/details/80030893
+        //每次fetch 3MB的数据到本地
+        props.put(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG,3 * 1024 * 1024);
+        //每次最多本地缓存拉取600条数据,600条数据必须在MAX_POLL_INTERVAL_MS_CONFIG时间内消费完成。
+        props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 600);
         //1次拉去最多处理时间为300秒
         props.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, 300000);
         props.put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, 5000);
+
+        //鉴权信息
+        if (StringUtils.isNotBlank(kafkaMate.getUsername())) {
+            props.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SASL_PLAINTEXT");
+            props.put(SaslConfigs.SASL_MECHANISM, "SCRAM-SHA-512");
+            props.put(SaslConfigs.SASL_JAAS_CONFIG,
+                    "org.apache.kafka.common.security.scram.ScramLoginModule required " +
+                            "  username=\"" + kafkaMate.getUsername() + "\"" +
+                            "  password=\"" + kafkaMate.getPassword() + "\";");
+        }
         return props;
     }
 

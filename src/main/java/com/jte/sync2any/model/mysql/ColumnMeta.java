@@ -31,7 +31,7 @@ public class ColumnMeta {
     private int dataType;
     private String dataTypeName;
     private String esDataType;
-    private String esColumnName;
+    private String targetColumnName;
     private int columnSize;
     private int decimalDigits;
     private int numPrecRadix;
