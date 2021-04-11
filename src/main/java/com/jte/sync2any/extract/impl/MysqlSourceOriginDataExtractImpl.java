@@ -18,10 +18,10 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import java.io.File;
+import java.security.SecureRandom;
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Random;
 
 /**
  * 从mysql中提取原始数据
@@ -60,7 +60,7 @@ public class MysqlSourceOriginDataExtractImpl implements SourceOriginDataExtract
         JdbcTemplate jdbcTemplate = allSourceTemplate.get(tableMeta.getDbName());
         String dbUrl=jdbcTemplate.getDataSource().getConnection().getMetaData().getURL();
         Map<String,String> dbParam=DbUtils.getParamFromUrl(dbUrl);
-        String filePath=System.getProperty("java.io.tmpdir")+File.separator+tableMeta.getDbName()+"_"+tableMeta.getTableName()+"_"+new Random().nextInt(99999)+".data.sql";
+        String filePath=System.getProperty("java.io.tmpdir")+File.separator+tableMeta.getDbName()+"_"+tableMeta.getTableName()+"_"+new SecureRandom().nextInt(99999)+".data.sql";
         File sqlFile= new File(filePath);
 
         ProcBuilder builder = new ProcBuilder(sync2any.getMysqldump());

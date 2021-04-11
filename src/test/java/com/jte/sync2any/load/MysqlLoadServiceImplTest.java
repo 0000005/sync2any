@@ -97,4 +97,76 @@ public class MysqlLoadServiceImplTest  {
         assertArrayEquals(new Object[]{1,"66666"},params);
     }
 
+
+    @Test
+    public void buildUpdateSqlByPksTest(){
+        ColumnMeta idColumn = new ColumnMeta();
+        idColumn.setColumnName("id");
+        ColumnMeta groupCodeColumn = new ColumnMeta();
+        groupCodeColumn.setColumnName("group_code");
+        ColumnMeta nameColumn = new ColumnMeta();
+        nameColumn.setColumnName("name");
+        ColumnMeta ageColumn = new ColumnMeta();
+        ageColumn.setColumnName("age");
+        List<ColumnMeta> allColumnList =new ArrayList<>();
+        allColumnList.add(idColumn);
+        allColumnList.add(groupCodeColumn);
+        allColumnList.add(nameColumn);
+        allColumnList.add(ageColumn);
+
+        TableMeta tableMeta =mock(TableMeta.class);
+        when(tableMeta.getPrimaryKeyOnlyName()).thenReturn(pkNameList);
+        when(tableMeta.getTableName()).thenReturn("t_user");
+
+        when(tableMeta.getAllColumnList()).thenReturn(allColumnList);
+        String updateSql =new MysqlLoadServiceImpl().buildUpdateSqlByPks(tableMeta);
+        log.info("updateSQL:{}",updateSql);
+        assertEquals("UPDATE t_user SET name = ?, age = ? WHERE id = ?  and group_code = ?  ",updateSql);
+    }
+
+
+    @Test
+    public void fillUpdateParamTest(){
+        ColumnMeta idColumn = new ColumnMeta();
+        idColumn.setColumnName("id");
+        ColumnMeta groupCodeColumn = new ColumnMeta();
+        groupCodeColumn.setColumnName("group_code");
+        ColumnMeta nameColumn = new ColumnMeta();
+        nameColumn.setColumnName("name");
+        ColumnMeta ageColumn = new ColumnMeta();
+        ageColumn.setColumnName("age");
+        List<ColumnMeta> allColumnList =new ArrayList<>();
+        allColumnList.add(idColumn);
+        allColumnList.add(groupCodeColumn);
+        allColumnList.add(nameColumn);
+        allColumnList.add(ageColumn);
+
+        Map<String, Object>  parameters = new HashMap<String, Object> () {{
+            put("id", 1);
+            put("group_code", "66666");
+            put("name", "jerry");
+            put("age", "18");
+        }};
+
+        Field idField = new Field();
+        idField.setValue(1);
+        Field groupCodeField = new Field();
+        groupCodeField.setValue("66666");
+        Map<String, Field>  pkValueMap = new HashMap<String, Field> () {{
+            put("id",idField);
+            put("group_code",  groupCodeField);
+        }};
+
+        TableMeta tableMeta =mock(TableMeta.class);
+        when(tableMeta.getPrimaryKeyOnlyName()).thenReturn(pkNameList);
+        when(tableMeta.getTableName()).thenReturn("t_user");
+        when(tableMeta.getAllColumnList()).thenReturn(allColumnList);
+        CudRequest cudRequest=mock(CudRequest.class);
+        when(cudRequest.getTableMeta()).thenReturn(tableMeta);
+        when(cudRequest.getParameters()).thenReturn(parameters);
+        when(cudRequest.getPkValueMap()).thenReturn(pkValueMap);
+        Object[] params =new MysqlLoadServiceImpl().fillUpdateParam(cudRequest);
+        assertArrayEquals(new Object[]{"jerry","18",1,"66666"},params);
+    }
+
 }

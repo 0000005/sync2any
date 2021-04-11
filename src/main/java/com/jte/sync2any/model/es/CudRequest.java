@@ -1,5 +1,6 @@
 package com.jte.sync2any.model.es;
 
+import com.jte.sync2any.model.mq.SubscribeDataProto;
 import com.jte.sync2any.model.mysql.Field;
 import com.jte.sync2any.model.mysql.TableMeta;
 import lombok.Data;
@@ -13,9 +14,8 @@ import java.util.Map;
 public class CudRequest {
     /**
      * 操作类型
-     * Also see: com.jte.sync2any.extract.impl.KafkaMsgListener
      */
-    private String operationType;
+    private SubscribeDataProto.DMLType dmlType;
 
     /**
      * 对于目标数据源：对mysql来说是表名，对es来说是index名称

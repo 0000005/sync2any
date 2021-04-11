@@ -19,8 +19,11 @@ import java.io.FileNotFoundException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.jte.sync2any.extract.KafkaMsgListener.EVENT_TYPE_INSERT;
+import static com.jte.sync2any.model.mq.SubscribeDataProto.DMLType.INSERT;
 
+/**
+ * 将从mysql导出的dumpfile文件转化为CudRequest
+ */
 @Service
 @Slf4j
 public class MysqlDumpTransformImpl implements DumpTransform {
@@ -28,7 +31,7 @@ public class MysqlDumpTransformImpl implements DumpTransform {
     private final String SQL_START_FLAG="INSERT INTO";
 
     @Override
-    public FileEsRequest transform(File file, TableMeta tableMeta) throws FileNotFoundException {
+    public Iterator transform(File file, TableMeta tableMeta) throws FileNotFoundException {
         FileEsRequest request = new FileEsRequest(file,this,tableMeta);
         return request;
     }
@@ -56,10 +59,10 @@ public class MysqlDumpTransformImpl implements DumpTransform {
     /**
      * 获取对应的参数值。key为列名，value为值
      *
-     * @param values 对应es的一条记录
+     * @param values 对应一条记录
      * @return
      */
-    private Map<String, Object> getParameters(SQLInsertStatement.ValuesClause values, TableMeta tableMeta){
+    private Map<String, Object> getInsertParameters(SQLInsertStatement.ValuesClause values, TableMeta tableMeta){
         Map<String, Object> params= new HashMap<>(70);
         List<ColumnMeta> columnMetaList=tableMeta.getAllColumnList();
         List<SQLExpr> valueList=values.getValues();
@@ -80,7 +83,7 @@ public class MysqlDumpTransformImpl implements DumpTransform {
         return params;
     }
 
-    private List<CudRequest> sqlToEsRequest(String line, TableMeta tableMeta)
+    private List<CudRequest> sqlToInsertCudRequest(String line, TableMeta tableMeta)
     {
         List<CudRequest> requestList = new ArrayList<>();
         if(line.startsWith(SQL_START_FLAG))
@@ -93,8 +96,8 @@ public class MysqlDumpTransformImpl implements DumpTransform {
                 CudRequest cudRequest = new CudRequest();
                 cudRequest.setPkValueStr(getDocId(values,tableMeta));
                 cudRequest.setTable(tableMeta.getTargetTableName());
-                cudRequest.setOperationType(EVENT_TYPE_INSERT);
-                cudRequest.setParameters(getParameters(values,tableMeta));
+                cudRequest.setDmlType(INSERT);
+                cudRequest.setParameters(getInsertParameters(values,tableMeta));
                 cudRequest.setTableMeta(tableMeta);
                 requestList.add(cudRequest);
             }
@@ -161,7 +164,7 @@ public class MysqlDumpTransformImpl implements DumpTransform {
         @Override
         public List<CudRequest> next() {
             if (hasNext()) {
-                return dt.sqlToEsRequest(data.nextLine(),tableMeta);
+                return dt.sqlToInsertCudRequest(data.nextLine(),tableMeta);
             }
             throw new NoSuchElementException("file is ended");
         }

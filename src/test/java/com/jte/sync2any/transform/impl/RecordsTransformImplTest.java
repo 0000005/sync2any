@@ -2,15 +2,8 @@ package com.jte.sync2any.transform.impl;
 
 import com.jte.sync2any.Tester;
 import com.jte.sync2any.conf.RuleConfigParser;
-import com.jte.sync2any.model.es.CudRequest;
-import com.jte.sync2any.model.mq.TcMqMessage;
-import com.jte.sync2any.model.mysql.TableMeta;
-import com.jte.sync2any.model.mysql.TableRecords;
 import com.jte.sync2any.transform.RecordsTransform;
-import com.jte.sync2any.util.JsonUtil;
-import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Test;
 
 import javax.annotation.Resource;
 
@@ -27,52 +20,52 @@ public class RecordsTransformImplTest extends Tester {
     private RecordsTransform transform;
     @Resource
     RuleConfigParser ruleParser;
-
-    @Test
-    public void transformUpdateTest() {
-        TcMqMessage message =JsonUtil.jsonToPojo(updateMsg,TcMqMessage.class);
-        TableMeta tableMeta=RuleConfigParser.RULES_MAP.getIfPresent("test$wzh");
-        TableRecords tableRecords=TableRecords.buildRecords(tableMeta,message);
-        CudRequest request=transform.transform(tableRecords);
-        System.out.println(JsonUtil.objectToJson(request));
-        Assert.assertEquals("update",request.getOperationType());
-        Assert.assertEquals(tableRecords.getTableMeta().getTargetTableName(),request.getTable());
-        Assert.assertEquals("1",request.getPkValueStr());
-        Assert.assertNotNull(request.getTableMeta());
-        Assert.assertTrue(request.getParameters().keySet().size()==2);
-        Assert.assertEquals("2",request.getParameters().get("id"));
-    }
-
-
-    @Test
-    public void transformDeleteTest() {
-        TcMqMessage message =JsonUtil.jsonToPojo(deleteMsg,TcMqMessage.class);
-        TableMeta tableMeta=RuleConfigParser.RULES_MAP.getIfPresent("test$wzh");
-        TableRecords tableRecords=TableRecords.buildRecords(tableMeta,message);
-        CudRequest request=transform.transform(tableRecords);
-        System.out.println(JsonUtil.objectToJson(request));
-        Assert.assertEquals("delete",request.getOperationType());
-        Assert.assertEquals(tableRecords.getTableMeta().getTargetTableName(),request.getTable());
-        Assert.assertEquals("8",request.getPkValueStr());
-        Assert.assertNotNull(request.getTableMeta());
-        Assert.assertTrue(request.getParameters().keySet().size()==1);
-        Assert.assertEquals("8",request.getParameters().get("id"));
-    }
-
-    @Test
-    public void transformInsertTest() {
-        TcMqMessage message =JsonUtil.jsonToPojo(insertMsg,TcMqMessage.class);
-        TableMeta tableMeta=RuleConfigParser.RULES_MAP.getIfPresent("test$wzh");
-        TableRecords tableRecords=TableRecords.buildRecords(tableMeta,message);
-        CudRequest request=transform.transform(tableRecords);
-        System.out.println(JsonUtil.objectToJson(request));
-        Assert.assertEquals("insert",request.getOperationType());
-        Assert.assertEquals(tableRecords.getTableMeta().getTargetTableName(),request.getTable());
-        Assert.assertEquals("8",request.getPkValueStr());
-        Assert.assertNotNull(request.getTableMeta());
-        Assert.assertTrue(request.getParameters().keySet().size()==2);
-        Assert.assertEquals("8",request.getParameters().get("id"));
-    }
+//
+//    @Test
+//    public void transformUpdateTest() {
+//        TcMqMessage message =JsonUtil.jsonToPojo(updateMsg,TcMqMessage.class);
+//        TableMeta tableMeta=RuleConfigParser.RULES_MAP.getIfPresent("test$wzh");
+//        TableRecords tableRecords=TableRecords.buildRecords(tableMeta,message);
+//        CudRequest request=transform.transform(tableRecords);
+//        System.out.println(JsonUtil.objectToJson(request));
+//        Assert.assertEquals("update",request.getOperationType());
+//        Assert.assertEquals(tableRecords.getTableMeta().getTargetTableName(),request.getTable());
+//        Assert.assertEquals("1",request.getPkValueStr());
+//        Assert.assertNotNull(request.getTableMeta());
+//        Assert.assertTrue(request.getParameters().keySet().size()==2);
+//        Assert.assertEquals("2",request.getParameters().get("id"));
+//    }
+//
+//
+//    @Test
+//    public void transformDeleteTest() {
+//        TcMqMessage message =JsonUtil.jsonToPojo(deleteMsg,TcMqMessage.class);
+//        TableMeta tableMeta=RuleConfigParser.RULES_MAP.getIfPresent("test$wzh");
+//        TableRecords tableRecords=TableRecords.buildRecords(tableMeta,message);
+//        CudRequest request=transform.transform(tableRecords);
+//        System.out.println(JsonUtil.objectToJson(request));
+//        Assert.assertEquals("delete",request.getOperationType());
+//        Assert.assertEquals(tableRecords.getTableMeta().getTargetTableName(),request.getTable());
+//        Assert.assertEquals("8",request.getPkValueStr());
+//        Assert.assertNotNull(request.getTableMeta());
+//        Assert.assertTrue(request.getParameters().keySet().size()==1);
+//        Assert.assertEquals("8",request.getParameters().get("id"));
+//    }
+//
+//    @Test
+//    public void transformInsertTest() {
+//        TcMqMessage message =JsonUtil.jsonToPojo(insertMsg,TcMqMessage.class);
+//        TableMeta tableMeta=RuleConfigParser.RULES_MAP.getIfPresent("test$wzh");
+//        TableRecords tableRecords=TableRecords.buildRecords(tableMeta,message);
+//        CudRequest request=transform.transform(tableRecords);
+//        System.out.println(JsonUtil.objectToJson(request));
+//        Assert.assertEquals("insert",request.getOperationType());
+//        Assert.assertEquals(tableRecords.getTableMeta().getTargetTableName(),request.getTable());
+//        Assert.assertEquals("8",request.getPkValueStr());
+//        Assert.assertNotNull(request.getTableMeta());
+//        Assert.assertTrue(request.getParameters().keySet().size()==2);
+//        Assert.assertEquals("8",request.getParameters().get("id"));
+//    }
 
 
     @Before

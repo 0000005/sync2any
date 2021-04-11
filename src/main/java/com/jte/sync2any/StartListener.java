@@ -7,10 +7,13 @@ import com.jte.sync2any.extract.KafkaMsgListener;
 import com.jte.sync2any.extract.SourceMetaExtract;
 import com.jte.sync2any.extract.SourceOriginDataExtract;
 import com.jte.sync2any.load.AbstractLoadService;
+import com.jte.sync2any.model.config.Conn;
+import com.jte.sync2any.model.config.TargetDatasources;
 import com.jte.sync2any.model.core.SyncState;
 import com.jte.sync2any.model.es.CudRequest;
 import com.jte.sync2any.model.mysql.TableMeta;
 import com.jte.sync2any.transform.DumpTransform;
+import com.jte.sync2any.util.DbUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.annotation.Configuration;
@@ -36,9 +39,6 @@ public class StartListener {
     SourceMetaExtract sourceMetaExtract;
 
     @Resource
-    AbstractLoadService loadService;
-
-    @Resource
     SourceOriginDataExtract sourceOriginDataExtract;
 
     @Resource
@@ -46,6 +46,9 @@ public class StartListener {
 
     @Resource
     RuleConfigParser ruleConfigParser;
+
+    @Resource
+    TargetDatasources targetDatasources;
     /**
      * 1、获取所有要同步的表
      * 2、每一张表检查是否要同步原始数据
@@ -69,7 +72,9 @@ public class StartListener {
             TableMeta currTableMeta= tableRules.get(key);
             try
             {
-                //查看es的index是否存在且有数据
+                Conn conn=DbUtils.getConnByDbId(targetDatasources.getDatasources(),currTableMeta.getTargetDbId());
+                AbstractLoadService loadService = AbstractLoadService.getLoadService(conn.getType());
+                //查看目标数据库是否存在且有数据
                 Long targetCount=loadService.countData(currTableMeta.getTargetDbId(),currTableMeta.getTargetTableName());
                 //查看源数据是否有数据
                 Long sourceCount=sourceMetaExtract.getDataCount(currTableMeta.getSourceDbId(),currTableMeta.getTableName());

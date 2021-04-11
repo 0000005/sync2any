@@ -1,8 +1,8 @@
 package com.jte.sync2any.transform;
 
 import com.jte.sync2any.exception.ShouldNeverHappenException;
-import com.jte.sync2any.extract.KafkaMsgListener;
 import com.jte.sync2any.model.es.CudRequest;
+import com.jte.sync2any.model.mq.SubscribeDataProto;
 import com.jte.sync2any.model.mysql.ColumnMeta;
 import com.jte.sync2any.model.mysql.Field;
 import com.jte.sync2any.model.mysql.TableRecords;
@@ -11,6 +11,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static com.jte.sync2any.model.mq.SubscribeDataProto.DMLType.*;
 
 /**
  * 用于解析mq收到的消息
@@ -44,8 +46,8 @@ public abstract class RecordsTransform {
 
     /**
      * 获取对应的参数值。key为列名，value为值
-     * 当是delete时，参数值应该获取where部分。因为要根据条件（主键）删除数据
-     * 当是update\insert时，参数应该是field部分。因为要修改（根据主键）或插入数据。
+     * 当是delete时，应该获取修改前的参数。因为要根据条件（主键）删除数据
+     * 当是update\insert时，应该是修改后的参数。因为要修改（根据主键）或插入数据。
      *
      * @param records 对应数据库的一条记录
      * @return
@@ -54,17 +56,16 @@ public abstract class RecordsTransform {
         Map<String, Object> params= new HashMap<>(70);
 
         List<Map<String, Field>> rows = new ArrayList<>();
-        String eventTypeStr=records.getMqMessage().getEventtypestr();
-        if(KafkaMsgListener.EVENT_TYPE_DELETE.equalsIgnoreCase(eventTypeStr))
+        SubscribeDataProto.DMLType dmlType = records.getDmlEvt().getDmlEventType();
+        if(dmlType.equals(DELETE))
         {
-            //以where为主
-            rows = records.pkRows(records.getWhereRows());
+            //以修改前的数据为准
+            rows = records.pkRows(records.getOldRows());
         }
-        else if(KafkaMsgListener.EVENT_TYPE_UPDATE.equalsIgnoreCase(eventTypeStr)||
-                KafkaMsgListener.EVENT_TYPE_INSERT.equalsIgnoreCase(eventTypeStr))
+        else if(dmlType.equals(INSERT)||dmlType.equals(UPDATE))
         {
-            //以field为主
-            rows = records.parseToMap(records.getFieldRows());
+            //以修改后的数据为准
+            rows = records.parseToMap(records.getNewRows());
         }
         if(rows.isEmpty())
         {
@@ -87,18 +88,17 @@ public abstract class RecordsTransform {
      */
     protected Map<String,Field> getPkValueMap(TableRecords records)
     {
+        SubscribeDataProto.DMLType dmlType = records.getDmlEvt().getDmlEventType();
         List<Map<String,Field>> rows = new ArrayList<>();
-        String eventTypeStr=records.getMqMessage().getEventtypestr();
-        if(KafkaMsgListener.EVENT_TYPE_DELETE.equalsIgnoreCase(eventTypeStr)||
-                KafkaMsgListener.EVENT_TYPE_UPDATE.equalsIgnoreCase(eventTypeStr))
+        if(dmlType.equals(DELETE)||dmlType.equals(UPDATE))
         {
             //以where为主
-            rows = records.pkRows(records.getWhereRows());
+            rows = records.pkRows(records.getOldRows());
         }
-        else if(KafkaMsgListener.EVENT_TYPE_INSERT.equalsIgnoreCase(eventTypeStr))
+        else if(dmlType.equals(INSERT))
         {
             //以field为主
-            rows = records.pkRows(records.getFieldRows());
+            rows = records.pkRows(records.getNewRows());
         }
         if(rows.isEmpty())
         {

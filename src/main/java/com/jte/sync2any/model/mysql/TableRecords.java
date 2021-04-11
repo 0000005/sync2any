@@ -23,8 +23,6 @@ import javax.xml.bind.DatatypeConverter;
 import java.sql.SQLException;
 import java.util.*;
 
-import static com.jte.sync2any.model.mq.SubscribeDataProto.DMLType.*;
-
 /**
  * The type Table records.
  *
@@ -36,21 +34,26 @@ public class TableRecords {
     /**
      * 拼凑TableRecords需要分两种情况处理
      */
-    private static String TYPE_WHERE="where";
-    private static String TYPE_FIELD="field";
+    private static String TYPE_OLD ="old";
+    private static String TYPE_NEW ="new";
 
     private transient TableMeta tableMeta;
+
+    /**
+     * dml类型
+     */
+    private SubscribeDataProto.DMLEvent dmlEvt;
 
     private String tableName;
 
     /**
-     * 对应mq消息中的where属性
+     * 对应binlog修改前的行
      */
-    private List<Row> whereRows = new ArrayList<>();
+    private List<Row> oldRows = new ArrayList<>();
     /**
-     * 对应mq消息中的field属性
+     * 对应binlog修改后的行
      */
-    private List<Row> fieldRows = new ArrayList<>();
+    private List<Row> newRows = new ArrayList<>();
 
     /**
      * 提取origin data里面的值
@@ -81,25 +84,25 @@ public class TableRecords {
      *
      * @return the whereRows
      */
-    public List<Row> getWhereRows() {
-        return whereRows;
+    public List<Row> getOldRows() {
+        return oldRows;
     }
 
     /**
      * Sets whereRows.
      *
-     * @param whereRows the whereRows
+     * @param oldRows the whereRows
      */
-    public void setWhereRows(List<Row> whereRows) {
-        this.whereRows = whereRows;
+    public void setOldRows(List<Row> oldRows) {
+        this.oldRows = oldRows;
     }
 
-    public List<Row> getFieldRows() {
-        return fieldRows;
+    public List<Row> getNewRows() {
+        return newRows;
     }
 
-    public void setFieldRows(List<Row> fieldRows) {
-        this.fieldRows = fieldRows;
+    public void setNewRows(List<Row> newRows) {
+        this.newRows = newRows;
     }
 
     public List<Row> getOriginRows() {
@@ -146,8 +149,8 @@ public class TableRecords {
      *
      * @param row the row
      */
-    public void addWhereRow(Row row) {
-        whereRows.add(row);
+    public void addOldRow(Row row) {
+        oldRows.add(row);
     }
 
     /**
@@ -155,8 +158,8 @@ public class TableRecords {
      *
      * @param row the row
      */
-    public void addFieldRow(Row row) {
-        fieldRows.add(row);
+    public void addNewRow(Row row) {
+        newRows.add(row);
     }
 
     /**
@@ -223,32 +226,21 @@ public class TableRecords {
         }
         TableRecords records = new TableRecords(tableMeta);
         records.setTableName(tableMeta.getTableName());
-        List<ColumnMeta> columnMetaList=tableMeta.getAllColumnList();
+        records.setDmlEvt(dmlEvt);
 
-        SubscribeDataProto.DMLType dmlType = dmlEvt.getDmlEventType();
-        //delete只要处理where部分
-        boolean shouldCalculateWhere=dmlType.equals(DELETE)||dmlType.equals(UPDATE);
-        //insert语句只要处理field部分
-        boolean shouldCalculateField=dmlType.equals(INSERT)||dmlType.equals(UPDATE);
 
-        List<Field> whereFields = new ArrayList<>(row.getOldColumnsCount());
-        List<Field> fieldFields = new ArrayList<>(row.getNewColumnsCount());
-        assembleFields(tableMeta,dmlEvt,whereFields,row,shouldCalculateWhere,TYPE_WHERE);
-        assembleFields(tableMeta,dmlEvt,fieldFields,row,shouldCalculateWhere,TYPE_FIELD);
+        List<Field> oldFields = new ArrayList<>(row.getOldColumnsCount());
+        assembleFields(tableMeta,dmlEvt,oldFields,row,TYPE_OLD);
+        Row whereRow = new Row();
+        whereRow.setFields(oldFields);
+        records.addOldRow(whereRow);
 
-        if(shouldCalculateWhere)
-        {
-            Row whereRow = new Row();
-            whereRow.setFields(whereFields);
-            records.addWhereRow(whereRow);
-        }
+        List<Field> newFields = new ArrayList<>(row.getNewColumnsCount());
+        assembleFields(tableMeta,dmlEvt,newFields,row,TYPE_NEW);
+        Row fieldRow = new Row();
+        fieldRow.setFields(newFields);
+        records.addNewRow(fieldRow);
 
-        if(shouldCalculateField)
-        {
-            Row fieldRow = new Row();
-            fieldRow.setFields(fieldFields);
-            records.addFieldRow(fieldRow);
-        }
         return records;
     }
 
@@ -258,27 +250,26 @@ public class TableRecords {
      * @param dmlEvt
      * @param fields
      * @param row
-     * @param condition
      * @param type
      */
     private static void assembleFields(TableMeta tableMeta, SubscribeDataProto.DMLEvent dmlEvt ,List<Field> fields,
-                                SubscribeDataProto.RowChange row,boolean condition,String type){
+                                SubscribeDataProto.RowChange row,String type){
         int columnCount=0;
-        if(TYPE_WHERE.equals(type))
+        if(TYPE_OLD.equals(type))
         {
             columnCount = row.getOldColumnsCount();
         }
-        else if(TYPE_FIELD.equals(type))
+        else if(TYPE_NEW.equals(type))
         {
             columnCount = row.getNewColumnsCount();
         }
-        for (int i = 0; i < columnCount && condition; i++) {
+        for (int i = 0; i < columnCount; i++) {
             SubscribeDataProto.Data col =null;
-            if(TYPE_WHERE.equals(type))
+            if(TYPE_OLD.equals(type))
             {
                 col = row.getOldColumns(i);
             }
-            else if(TYPE_FIELD.equals(type))
+            else if(TYPE_NEW.equals(type))
             {
                 col = row.getNewColumns(i);
             }
@@ -339,4 +330,11 @@ public class TableRecords {
         }
     }
 
+    public SubscribeDataProto.DMLEvent getDmlEvt() {
+        return dmlEvt;
+    }
+
+    public void setDmlEvt(SubscribeDataProto.DMLEvent dmlEvt) {
+        this.dmlEvt = dmlEvt;
+    }
 }

@@ -15,8 +15,8 @@ public class RecordsTransformImpl extends RecordsTransform {
         CudRequest cudRequest = new CudRequest();
         cudRequest.setPkValueStr(getPkValueStr(records));
         cudRequest.setPkValueMap(getPkValueMap(records));
-        cudRequest.setTable(records.getTableMeta().getTargetTableName());
-        cudRequest.setOperationType(records.getMqMessage().getEventtypestr());
+        cudRequest.setTable(records.getTableMeta().getTargetTableName().toLowerCase());
+        cudRequest.setDmlType(records.getDmlEvt().getDmlEventType());
         cudRequest.setParameters(getParameters(records));
         cudRequest.setTableMeta(records.getTableMeta());
         return cudRequest;

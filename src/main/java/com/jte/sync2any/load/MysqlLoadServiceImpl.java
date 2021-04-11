@@ -20,6 +20,11 @@ public class MysqlLoadServiceImpl extends AbstractLoadService {
      */
     private static final String INSERT_SQL_TEMPLATE = "INSERT INTO %s (%s) VALUES (%s)";
 
+    /**
+     * UPDATE a SET x = ?, y = ?, z = ? WHERE pk1 in (?) pk2 in (?)
+     */
+    private static final String UPDATE_SQL_TEMPLATE = "UPDATE %s SET %s WHERE %s ";
+
     @Override
     public int operateData(CudRequest request) throws IOException
     {
@@ -62,6 +67,48 @@ public class MysqlLoadServiceImpl extends AbstractLoadService {
 
     }
 
+
+    /**
+     * 为insert语句填充参数
+     * @param cudRequest
+     * @return
+     */
+    public Object[] fillUpdateParam(CudRequest cudRequest){
+        TableMeta tableMeta = cudRequest.getTableMeta();
+        Object [] params = new Object[tableMeta.getAllColumnList().size()];
+        int index = 0;
+        List<String> pkNameList = tableMeta.getPrimaryKeyOnlyName();
+        List<ColumnMeta> nonPkColumnMateList = tableMeta.getAllColumnList().stream()
+                .filter(e->!pkNameList.contains(e.getColumnName()))
+                .collect(Collectors.toList());
+        for(ColumnMeta columnMeta : nonPkColumnMateList)
+        {
+            params[index]=cudRequest.getParameters().get(columnMeta.getColumnName());
+            index++;
+        }
+        for(String pkColumnName : tableMeta.getPrimaryKeyOnlyName())
+        {
+            params[index]=cudRequest.getPkValueMap().get(pkColumnName).getValue();
+            index++;
+        }
+        return params;
+    }
+
+
+    /**
+     * 构建update sql，更新值不包括主键；where以主键为条件
+     * @param tableMeta
+     * @return
+     */
+    public String buildUpdateSqlByPks(TableMeta tableMeta){
+        List<String> pkNameList = tableMeta.getPrimaryKeyOnlyName();
+        String updateColumns = tableMeta.getAllColumnList().stream()
+                .filter(e->!pkNameList.contains(e.getColumnName()))
+                .map(c -> ColumnUtils.addEscape(c.getColumnName()) + " = ?")
+                .collect(Collectors.joining(", "));
+        String whereSql = buildWhereConditionSqlByPks(tableMeta);
+        return String.format(UPDATE_SQL_TEMPLATE, tableMeta.getTableName(), updateColumns, whereSql);
+    }
 
 
     /**

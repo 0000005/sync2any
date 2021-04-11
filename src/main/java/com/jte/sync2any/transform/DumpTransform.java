@@ -7,12 +7,11 @@ import java.io.FileNotFoundException;
 import java.util.Iterator;
 
 /**
- * dump原始数据
- *
+ * 将从mysql导出的dumpfile文件转化为CudRequest
  */
 public interface DumpTransform {
     /**
-     * 将mysqldump出来的信息解析成为可操控的es对象
+     *
      * @param file 数据文件地址
      * @param tableMeta 表的元信息
      *

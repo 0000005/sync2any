@@ -3,7 +3,6 @@ package com.jte.sync2any.load;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.jte.sync2any.exception.ShouldNeverHappenException;
-import com.jte.sync2any.extract.KafkaMsgListener;
 import com.jte.sync2any.model.config.Conn;
 import com.jte.sync2any.model.es.CudRequest;
 import com.jte.sync2any.model.es.EsDateType;
@@ -38,6 +37,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import static com.jte.sync2any.model.mq.SubscribeDataProto.DMLType.*;
+
 @Slf4j
 @Service
 public class EsLoadServiceImpl extends AbstractLoadService {
@@ -50,21 +51,21 @@ public class EsLoadServiceImpl extends AbstractLoadService {
     @Override
     public int operateData(CudRequest request) throws IOException {
         checkAndCreateStorage(request.getTableMeta());
-        if(KafkaMsgListener.EVENT_TYPE_INSERT.equalsIgnoreCase(request.getOperationType()))
+        if(INSERT == request.getDmlType())
         {
             return addData(request);
         }
-        else if(KafkaMsgListener.EVENT_TYPE_UPDATE.equalsIgnoreCase(request.getOperationType()))
+        else if(UPDATE == request.getDmlType())
         {
             return updateData(request);
         }
-        else if(KafkaMsgListener.EVENT_TYPE_DELETE.equalsIgnoreCase(request.getOperationType()))
+        else if(DELETE == request.getDmlType())
         {
             return deleteData(request);
         }
         else
         {
-            throw new ShouldNeverHappenException("unknown operation type:"+request.getOperationType());
+            throw new ShouldNeverHappenException("unknown operation type:"+request.getDmlType());
         }
     }
 

@@ -3,9 +3,7 @@ package com.jte.sync2any.extract;
 import com.google.common.base.Throwables;
 import com.jte.sync2any.conf.KafkaConfig;
 import com.jte.sync2any.conf.RuleConfigParser;
-import com.jte.sync2any.conf.SpringContextUtils;
 import com.jte.sync2any.load.AbstractLoadService;
-import com.jte.sync2any.model.config.Conn;
 import com.jte.sync2any.model.config.Sync2any;
 import com.jte.sync2any.model.config.SyncConfig;
 import com.jte.sync2any.model.core.SyncState;
@@ -39,9 +37,6 @@ import static com.jte.sync2any.model.mq.SubscribeDataProto.DMLType.*;
 @Slf4j
 public class KafkaMsgListener implements AcknowledgingMessageListener<String,byte[]> {
 
-    public static final String EVENT_TYPE_INSERT = "insert";
-    public static final String EVENT_TYPE_UPDATE = "update";
-    public static final String EVENT_TYPE_DELETE = "delete";
     public static final int MAX_RETRY_TIMES =3;
 
     private Sync2any sync2any;
@@ -135,21 +130,7 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String,byt
                 //将mq的信息转为mysql形式，且已经进行了规则的处理
                 TableRecords tableRecords=TableRecords.buildRecords(tableMeta,row,dmlEvt);
                 //将tableRecords 转化为可操作的形式
-                AbstractLoadService loadService;
-                if(Conn.DB_TYPE_ES.equals(syncConfig.getTargetType()))
-                {
-                    loadService = (AbstractLoadService) SpringContextUtils.getContext().getBean("esLoadServiceImpl");
-                }
-                else if(Conn.DB_TYPE_MYSQL.equals(syncConfig.getTargetType()))
-                {
-                    loadService = (AbstractLoadService) SpringContextUtils.getContext().getBean("mysqlLoadServiceImpl");
-                }
-                else
-                {
-                    log.error("同步过程中发现错误的目标类型（targetType）:{}，请检查配置文件！",syncConfig.getTargetType());
-                    return ;
-                }
-
+                AbstractLoadService loadService = AbstractLoadService.getLoadService(syncConfig.getTargetType());
                 CudRequest request=transform.transform(tableRecords);
 
                 if(Objects.isNull(request))
