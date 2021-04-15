@@ -76,19 +76,19 @@ public class EsLoadServiceImplTest extends Tester {
         System.out.println(isExists);
     }
 
-    @Test
-    public void addDataTest() throws IOException {
-        Assert.assertEquals(1,esLoadService.addData(insertRequest));
-    }
-    @Test
-    public void updateDataTest() throws IOException {
-        Assert.assertEquals(1,esLoadService.updateData(updateRequest));
-    }
-
-    @Test
-    public void deleteDataTest() throws IOException {
-        Assert.assertEquals(1,esLoadService.deleteData(deleteRequest));
-    }
+//    @Test
+//    public void addDataTest() throws IOException {
+//        Assert.assertEquals(1,esLoadService.addData(insertRequest));
+//    }
+//    @Test
+//    public void updateDataTest() throws IOException {
+//        Assert.assertEquals(1,esLoadService.updateData(updateRequest));
+//    }
+//
+//    @Test
+//    public void deleteDataTest() throws IOException {
+//        Assert.assertEquals(1,esLoadService.deleteData(deleteRequest));
+//    }
 
     @Test
     public void batchAddTest() throws IOException{

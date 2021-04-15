@@ -109,7 +109,7 @@ sync2any:
           table: t_member_order_[0-9]{10}
           # 同步到目标数据源的表名或index（对es来说）
           index_table: t_member_order
-          # 自定义同步到es的字段名称和字段类型(es的类型)，字段类型请参考类：com.jte.sync2any.model.es.EsDateType
+          # 【目标数据库为mysql时不支持】自定义同步到es的字段名称和字段类型(es的类型)，字段类型请参考类：com.jte.sync2any.model.es.EsDateType
           map: '{"group_code":"groupCode","user_code":",integer"}'
           # 字段过滤，多个字段用逗号分隔。如果有值，则只保留这里填写的字段。
           field-filter: "user_id,user_name"
@@ -121,7 +121,7 @@ sync2any:
 - 一旦同步过程中发生任何错误，该任务会停止继续同步，防止数据错乱。其他正常的任务可继续执行，不影响。
 - sync2any会将数据库中的主键当作es中document的主键。碰到复合主键时，多个主键使用“_”符号隔开。
 - 在es中的更新和删除操作都是通过es的主键来定位document
-- 因为在同步原始数据前队列中会堆积消息（binlog），这意味着我们会重复消费到以前的binlog。此时要求update、delete语句中的条件必须基于不经常变动的字段（如id主键），否则重复消费binlog时可能导致消息错乱。
+- 因为在同步原始数据前队列中会堆积消息（binlog），这意味着我们会重复消费到以前的binlog。此时要求update不能修改主键值，否则重复消费binlog时可能导致消息错乱。
 
 
 ### 最佳实践

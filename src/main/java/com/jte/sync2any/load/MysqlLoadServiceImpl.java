@@ -1,13 +1,20 @@
 package com.jte.sync2any.load;
 
+import com.jte.sync2any.exception.ShouldNeverHappenException;
 import com.jte.sync2any.model.es.CudRequest;
 import com.jte.sync2any.model.mysql.ColumnMeta;
 import com.jte.sync2any.model.mysql.TableMeta;
 import com.jte.sync2any.util.ColumnUtils;
+import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.io.IOException;
+import javax.annotation.Resource;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
+
+import static com.jte.sync2any.model.mq.SubscribeDataProto.DMLType.*;
 
 /**
  * @author JerryYin
@@ -25,44 +32,92 @@ public class MysqlLoadServiceImpl extends AbstractLoadService {
      */
     private static final String UPDATE_SQL_TEMPLATE = "UPDATE %s SET %s WHERE %s ";
 
+    /**
+     *DELETE FROM a WHERE pk1 in ?;
+     */
+    private static final String DELETE_SQL_TEMPLATE = "DELETE FROM %s WHERE %s ";
+
+    /**
+     *SELECT count(*) FROM a;
+     */
+    private static final String COUNT_SQL_TEMPLATE = "SELECT COUNT(*) FROM %s ";
+
+    @Resource
+    Map<String,Object> allTargetDatasource;
+
     @Override
-    public int operateData(CudRequest request) throws IOException
+    public int operateData(CudRequest request)
     {
-        return 0;
+        JdbcTemplate jdbcTemplate = (JdbcTemplate) getTargetDsByDbId(allTargetDatasource,request.getTableMeta().getTargetDbId());
+        if(INSERT == request.getDmlType())
+        {
+            return addData(request,jdbcTemplate);
+        }
+        else if(UPDATE == request.getDmlType())
+        {
+            return updateData(request,jdbcTemplate);
+        }
+        else if(DELETE == request.getDmlType())
+        {
+            return deleteData(request,jdbcTemplate);
+        }
+        else
+        {
+            throw new ShouldNeverHappenException("unknown operation type:"+request.getDmlType());
+        }
+    }
+
+    private int addData(CudRequest request,JdbcTemplate jdbcTemplate)
+    {
+        String sql = buildInsertSqlByPks(request.getTableMeta());
+        return jdbcTemplate.update(sql,fillInsertParam(request));
+    }
+
+    private int deleteData(CudRequest request,JdbcTemplate jdbcTemplate)
+    {
+        TableMeta tableMeta = request.getTableMeta();
+        String whereSql = buildWhereConditionSqlByPks(tableMeta);
+        String deleteSql = String.format(DELETE_SQL_TEMPLATE, tableMeta.getTableName(), whereSql);
+        return jdbcTemplate.update(deleteSql,fillDeleteParam(request));
+    }
+
+    private int updateData(CudRequest request,JdbcTemplate jdbcTemplate)
+    {
+        String sql = buildUpdateSqlByPks(request.getTableMeta());
+        return jdbcTemplate.update(sql,fillUpdateParam(request));
     }
 
     @Override
-    public int addData(CudRequest request) throws IOException
+    public int batchAdd(List<CudRequest> requestList)
     {
-        return 0;
+        int effectNums = 0;
+        Map<TableMeta,List<CudRequest>> requestMap = requestList.stream().parallel().collect(Collectors.groupingBy(CudRequest::getTableMeta));
+        Set<TableMeta> tableMeteSet = requestMap.keySet();
+        Iterator<TableMeta> it=tableMeteSet.iterator();
+        while(it.hasNext())
+        {
+            TableMeta tableMeta = it.next();
+            JdbcTemplate jdbcTemplate = (JdbcTemplate) getTargetDsByDbId(allTargetDatasource,tableMeta.getTargetDbId());
+            List<CudRequest> groupByList = requestMap.get(tableMeta);
+            for(CudRequest e : groupByList)
+            {
+                effectNums+=addData(e,jdbcTemplate);
+            }
+        }
+        return effectNums;
     }
 
     @Override
-    public int deleteData(CudRequest request) throws IOException
+    public Long countData(String dbId,String table)
     {
-        return 0;
+        JdbcTemplate jdbcTemplate = (JdbcTemplate) getTargetDsByDbId(allTargetDatasource,dbId);
+        String countSql = String.format(COUNT_SQL_TEMPLATE, table);
+        int count = jdbcTemplate.queryForObject(countSql,Integer.class);
+        return Long.valueOf(count);
     }
 
     @Override
-    public int updateData(CudRequest request) throws IOException
-    {
-        return 0;
-    }
-
-    @Override
-    public int batchAdd(List<CudRequest> requestList) throws IOException
-    {
-        return 0;
-    }
-
-    @Override
-    public Long countData(String dbId,String esIndex) throws IOException
-    {
-        return null;
-    }
-
-    @Override
-    public void checkAndCreateStorage(TableMeta tableMeta) throws IOException
+    public void checkAndCreateStorage(TableMeta tableMeta)
     {
 
     }

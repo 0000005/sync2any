@@ -60,30 +60,6 @@ public abstract class AbstractLoadService {
     public abstract int operateData(CudRequest request) throws IOException;
 
     /**
-     * 新增一条记录
-     * @param request
-     * @return
-     * @throws IOException
-     */
-    public abstract int addData(CudRequest request) throws IOException;
-
-    /**
-     * 删除一条记录
-     * @param request
-     * @return
-     * @throws IOException
-     */
-    public abstract int deleteData(CudRequest request) throws IOException;
-
-    /**
-     * 更新一条记录
-     * @param request
-     * @return
-     * @throws IOException
-     */
-    public abstract int updateData(CudRequest request) throws IOException;
-
-    /**
      * 批量新增
      * @param requestList
      * @return
@@ -93,6 +69,12 @@ public abstract class AbstractLoadService {
 
     /**
      * 统计某个数据库的某个表（index）中的记录数
+     * 此函数谨慎调用，需看懂它的意思
+     * ！！！！注意！！！！
+     * 此接口对于每个esIndex在整个应用的生命周期只会查一次，之后的对此函数的调用都会返回第一次查询的值。
+     * 这么做的原因是，为了多个分表（rule使用正则表达式）同步到同一个esIndex时，第一次dump数据的完整性。不然只会同步第一个分表的数据。
+     * ！！！！注意！！！！
+     * 查看es的index是否存在且有数据。
      * @param dbId
      * @param table
      * @return
