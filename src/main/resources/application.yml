@@ -7,3 +7,13 @@ spring:
     static-path-pattern: /static/**
 server:
   port: 9070
+
+management:
+  health:
+    elasticsearch:
+      enabled: false
+
+logging:
+  level:
+    root: info
+    com.jte: debug

@@ -231,15 +231,19 @@ public class TableRecords {
 
         List<Field> oldFields = new ArrayList<>(row.getOldColumnsCount());
         assembleFields(tableMeta,dmlEvt,oldFields,row,TYPE_OLD);
-        Row whereRow = new Row();
-        whereRow.setFields(oldFields);
-        records.addOldRow(whereRow);
+        if(!oldFields.isEmpty()){
+            Row whereRow = new Row();
+            whereRow.setFields(oldFields);
+            records.addOldRow(whereRow);
+        }
 
         List<Field> newFields = new ArrayList<>(row.getNewColumnsCount());
         assembleFields(tableMeta,dmlEvt,newFields,row,TYPE_NEW);
-        Row fieldRow = new Row();
-        fieldRow.setFields(newFields);
-        records.addNewRow(fieldRow);
+        if(!newFields.isEmpty()){
+            Row fieldRow = new Row();
+            fieldRow.setFields(newFields);
+            records.addNewRow(fieldRow);
+        }
 
         return records;
     }
@@ -318,13 +322,13 @@ public class TableRecords {
             case FLOAT64:
                 return data.getSv();
             case STRING:
-                return "_binary'" + new String(data.getBv().toByteArray()) + "'";
+                return new String(data.getBv().toByteArray());
             case BYTES:
-                return "x'" + DatatypeConverter.printHexBinary(data.getBv().toByteArray()) + "'";
+                return DatatypeConverter.printHexBinary(data.getBv().toByteArray());
             case NA:
                 return "DEFAULT";
             case NIL:
-                return "NULL";
+                return null;
             default:
                 throw new IllegalStateException("unsupported data type");
         }

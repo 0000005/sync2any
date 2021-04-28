@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 @Component
-@ConfigurationProperties("target.datasources")
+@ConfigurationProperties("target")
 @Data
 public class TargetDatasources {
     private List<Conn> datasources;

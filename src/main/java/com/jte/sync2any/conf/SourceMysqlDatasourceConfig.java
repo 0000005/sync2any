@@ -32,10 +32,10 @@ public class SourceMysqlDatasourceConfig {
         Set<String> dbIdSet = new HashSet<>();
         Map<String,JdbcTemplate> allSourceTemplate=new HashMap<>();
         List<Conn> connList= sourceMysqlDb.getDatasources();
-        for(int i =1;i<connList.size();i++)
+        for(int i =0;i<connList.size();i++)
         {
             Conn conn=connList.get(i);
-            if(StringUtils.isBlank(conn.getUrl())||StringUtils.isBlank(conn.getDbName())||StringUtils.isBlank(conn.getUsername()))
+            if(StringUtils.isBlank(conn.getUrl())||StringUtils.isBlank(conn.getUsername()))
             {
                 log.error("请正确填写源数据库的相关配置。");
                 System.exit(500);

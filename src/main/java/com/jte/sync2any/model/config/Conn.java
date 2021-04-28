@@ -9,7 +9,7 @@ public class Conn {
     /**
      * 默认mysql
      */
-    private String type="mysql";
+    private String type=DB_TYPE_MYSQL;
     private String dbId;
     private String dbName;
     private String url;

@@ -75,10 +75,6 @@ sync2any:
   #【选填】监控告警，只有填写了此参数才能开启监控告警，具体配置参考下面章节
   alert:
     secret: aaaa
-    app-id: bbbb
-    delay-template-id: cccc
-    idle-template-id: dddd
-    error-template-id: eeee
     
   # 规则比较灵活，可以配置多个
   sync-config-list:
@@ -109,6 +105,10 @@ sync2any:
           table: t_member_order_[0-9]{10}
           # 同步到目标数据源的表名或index（对es来说）
           index_table: t_member_order
+          # 【可选，目标数据库只支持Mysql】分表计算器，填写在spring容器中的bean名称
+          dynamic_tablename_assigner: mysqlDynamicDataAssign
+          # 【可选，当使用分区计算器时必填】分区健
+          sharding_key: group_code
           # 【目标数据库为mysql时不支持】自定义同步到es的字段名称和字段类型(es的类型)，字段类型请参考类：com.jte.sync2any.model.es.EsDateType
           map: '{"group_code":"groupCode","user_code":",integer"}'
           # 字段过滤，多个字段用逗号分隔。如果有值，则只保留这里填写的字段。
@@ -118,6 +118,7 @@ sync2any:
 ### 一些约定
 - 当tdsql的表中存在数据，且es中index不存在或者index中无document时才会dump原始数据同步到es。
 - es的index默认命名规则为“数据库名-表名”,es那边的字段名和tdsql保持一致。默认所有同步过去的名称都会转化为小写。
+- mysql的table默认命名和源数据库一致。
 - 一旦同步过程中发生任何错误，该任务会停止继续同步，防止数据错乱。其他正常的任务可继续执行，不影响。
 - sync2any会将数据库中的主键当作es中document的主键。碰到复合主键时，多个主键使用“_”符号隔开。
 - 在es中的更新和删除操作都是通过es的主键来定位document

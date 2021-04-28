@@ -6,8 +6,8 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.jte.sync2any.exception.ShouldNeverHappenException;
 import com.jte.sync2any.extract.SourceMetaExtract;
+import com.jte.sync2any.model.config.Conn;
 import com.jte.sync2any.model.config.Rule;
-import com.jte.sync2any.model.config.SourceMysqlDb;
 import com.jte.sync2any.model.config.Sync2any;
 import com.jte.sync2any.model.config.SyncConfig;
 import com.jte.sync2any.model.es.EsDateType;
@@ -46,8 +46,6 @@ public class RuleConfigParser {
     private SourceMetaExtract sourceMetaExtract;
     @Resource
     private Sync2any sync2any;
-    @Resource
-    private SourceMysqlDb sourceMysqlDb;
 
     public void initRules() {
         this.checkConfig();
@@ -87,7 +85,7 @@ public class RuleConfigParser {
                     tableMeta.setTargetDbId(config.getTargetDbId());
 
                     //填充匹配规则
-                    parseColumnMeta(tableMeta,rule);
+                    parseColumnMeta(config.getTargetType(),tableMeta,rule);
                     RULES_MAP.put(key,tableMeta);
                 }
             }
@@ -207,11 +205,15 @@ public class RuleConfigParser {
         return columnMeta;
     }
 
-    private TableMeta parseColumnMeta(TableMeta tableMeta,Rule rule){
+    private TableMeta parseColumnMeta(String targetType, TableMeta tableMeta, Rule rule){
         if(Objects.isNull(rule))
         {
-            //全部使用默认规则
-            tableMeta.setTargetTableName(tableMeta.getDbName().toLowerCase()+"-"+tableMeta.getTableName().toLowerCase());
+            if(Conn.DB_TYPE_MYSQL.equals(targetType)){
+                tableMeta.setTargetTableName(tableMeta.getTableName().toLowerCase());
+            }else{
+                tableMeta.setTargetTableName(tableMeta.getDbName().toLowerCase()+"-"+tableMeta.getTableName().toLowerCase());
+            }
+
             for(String columnName:tableMeta.getAllColumnMap().keySet())
             {
                 ColumnMeta columnMeta=tableMeta.getAllColumnMap().get(columnName);
@@ -221,6 +223,8 @@ public class RuleConfigParser {
             }
             return tableMeta;
         }
+        tableMeta.setDynamicTablenameAssigner(rule.getDynamicTablenameAssigner());
+        tableMeta.setShardingKey(rule.getShardingKey());
 
         ObjectMapper jsonMapper = new ObjectMapper();
         //计算规则
@@ -230,8 +234,11 @@ public class RuleConfigParser {
         }
         else
         {
-            //默认index命名规则：dbName-tableName
-            tableMeta.setTargetTableName(tableMeta.getDbName().toLowerCase()+"-"+tableMeta.getTableName().toLowerCase());
+            if(Conn.DB_TYPE_MYSQL.equals(targetType)){
+                tableMeta.setTargetTableName(tableMeta.getTableName().toLowerCase());
+            }else{
+                tableMeta.setTargetTableName(tableMeta.getDbName().toLowerCase()+"-"+tableMeta.getTableName().toLowerCase());
+            }
         }
         if(StringUtils.isNotBlank(rule.getFieldFilter()))
         {

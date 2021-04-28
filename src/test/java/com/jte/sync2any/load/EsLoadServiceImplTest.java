@@ -2,6 +2,7 @@ package com.jte.sync2any.load;
 
 import com.jte.sync2any.Tester;
 import com.jte.sync2any.conf.RuleConfigParser;
+import com.jte.sync2any.load.impl.EsLoadServiceImpl;
 import com.jte.sync2any.model.es.CudRequest;
 import com.jte.sync2any.model.mysql.TableMeta;
 import com.jte.sync2any.transform.RecordsTransform;
@@ -70,11 +71,11 @@ public class EsLoadServiceImplTest extends Tester {
         esLoadService.checkAndCreateStorage(tableMeta);
     }
 
-    @Test
-    public void isIndexExistsTest() throws IOException {
-        boolean isExists=esLoadService.isIndexExists("1","test-wzh");
-        System.out.println(isExists);
-    }
+//    @Test
+//    public void isIndexExistsTest() throws IOException {
+//        boolean isExists=esLoadService.isIndexExists("1","test-wzh");
+//        System.out.println(isExists);
+//    }
 
 //    @Test
 //    public void addDataTest() throws IOException {

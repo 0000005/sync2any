@@ -23,10 +23,9 @@ import static com.jte.sync2any.model.config.Conn.DB_TYPE_MYSQL;
 @Slf4j
 public class TargetDatasourcesConfig {
 
-    public static
 
     @Resource
-    TargetDatasources targetDatasources;
+    private TargetDatasources targetDatasources;
 
     @Bean("allTargetDatasource")
     public Map<String,Object> allTargetDatasource()
@@ -34,7 +33,7 @@ public class TargetDatasourcesConfig {
         Map<String,Object> targetDsMap = new HashMap<>();
         Set<String> dbIdSet = new HashSet<>();
         targetDatasources.getDatasources().stream().forEach(conn->{
-            if(StringUtils.isBlank(conn.getUrl())||StringUtils.isBlank(conn.getDbName())||StringUtils.isBlank(conn.getUsername()))
+            if(StringUtils.isBlank(conn.getUrl())||StringUtils.isBlank(conn.getUsername()))
             {
                 log.error("请填写elasticsearch的相关配置。");
                 System.exit(500);

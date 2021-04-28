@@ -5,6 +5,7 @@ import com.alibaba.druid.sql.ast.SQLStatement;
 import com.alibaba.druid.sql.ast.statement.SQLInsertStatement;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlInsertStatement;
 import com.alibaba.druid.sql.dialect.mysql.parser.MySqlStatementParser;
+import com.jte.sync2any.load.DynamicDataAssign;
 import com.jte.sync2any.model.es.CudRequest;
 import com.jte.sync2any.model.mysql.ColumnMeta;
 import com.jte.sync2any.model.mysql.TableMeta;
@@ -95,10 +96,12 @@ public class MysqlDumpTransformImpl implements DumpTransform {
             for(SQLInsertStatement.ValuesClause values:insert.getValuesList()){
                 CudRequest cudRequest = new CudRequest();
                 cudRequest.setPkValueStr(getDocId(values,tableMeta));
-                cudRequest.setTable(tableMeta.getTargetTableName());
                 cudRequest.setDmlType(INSERT);
-                cudRequest.setParameters(getInsertParameters(values,tableMeta));
+                Map<String, Object> parameterMap = getInsertParameters(values,tableMeta);
+                cudRequest.setParameters(parameterMap);
                 cudRequest.setTableMeta(tableMeta);
+                Object shardingValue = parameterMap.get(tableMeta.getShardingKey());
+                cudRequest.setTable(DynamicDataAssign.getDynamicTableName(shardingValue,tableMeta));
                 requestList.add(cudRequest);
             }
         }

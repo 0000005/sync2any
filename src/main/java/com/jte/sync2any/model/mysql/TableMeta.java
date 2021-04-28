@@ -90,6 +90,10 @@ public class TableMeta {
 
     private long lastAlarmTime=0;
 
+    private String dynamicTablenameAssigner;
+
+    private String shardingKey;
+
 
     public SyncState getState() {
         return state;
@@ -304,5 +308,21 @@ public class TableMeta {
 
     public void setTargetDbId(String targetDbId) {
         this.targetDbId = targetDbId;
+    }
+
+    public String getDynamicTablenameAssigner() {
+        return dynamicTablenameAssigner;
+    }
+
+    public void setDynamicTablenameAssigner(String dynamicTablenameAssigner) {
+        this.dynamicTablenameAssigner = dynamicTablenameAssigner;
+    }
+
+    public String getShardingKey() {
+        return shardingKey;
+    }
+
+    public void setShardingKey(String shardingKey) {
+        this.shardingKey = shardingKey;
     }
 }

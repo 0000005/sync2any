@@ -5,6 +5,9 @@ import com.jte.sync2any.model.config.Sync2any;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.data.elasticsearch.ElasticsearchAutoConfiguration;
+import org.springframework.boot.autoconfigure.data.elasticsearch.ElasticsearchDataAutoConfiguration;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
@@ -12,7 +15,7 @@ import org.springframework.context.annotation.Configuration;
 /**
  * @author JerryYin
  */
-@SpringBootApplication
+@SpringBootApplication(exclude={DataSourceAutoConfiguration.class, ElasticsearchDataAutoConfiguration.class,ElasticsearchAutoConfiguration.class})
 @Configuration
 @ConfigurationPropertiesScan
 @EnableConfigurationProperties(Sync2any.class)

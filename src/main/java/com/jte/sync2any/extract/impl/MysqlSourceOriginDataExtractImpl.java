@@ -57,7 +57,7 @@ public class MysqlSourceOriginDataExtractImpl implements SourceOriginDataExtract
             throw new ShouldNeverHappenException("db config is not found:{}"+tableMeta.getDbName());
         }
 
-        JdbcTemplate jdbcTemplate = allSourceTemplate.get(tableMeta.getDbName());
+        JdbcTemplate jdbcTemplate = allSourceTemplate.get(tableMeta.getSourceDbId());
         String dbUrl=jdbcTemplate.getDataSource().getConnection().getMetaData().getURL();
         Map<String,String> dbParam=DbUtils.getParamFromUrl(dbUrl);
         String filePath=System.getProperty("java.io.tmpdir")+File.separator+tableMeta.getDbName()+"_"+tableMeta.getTableName()+"_"+new SecureRandom().nextInt(99999)+".data.sql";

@@ -97,6 +97,12 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String,byt
             SubscribeDataProto.MessageType messageType=entry.getHeader().getMessageType();
             if(!SubscribeDataProto.MessageType.DML.equals(messageType))
             {
+                if(SubscribeDataProto.MessageType.BEGIN.equals(messageType)||SubscribeDataProto.MessageType.COMMIT.equals(messageType)||SubscribeDataProto.MessageType.CHECKPOINT.equals(messageType))
+                {
+                    //不打印begin\commit\checkpoint，日志太多了。
+                    return;
+                }
+                //非增删改语句
                 log.info("Ignore unsupported message type:{}",messageType.toString());
                 return ;
             }
@@ -105,14 +111,20 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String,byt
             SubscribeDataProto.DMLType dmlType = dmlEvt.getDmlEventType();
             if(!dmlType.equals(INSERT)&&!dmlType.equals(UPDATE)&&!dmlType.equals(DELETE))
             {
+                //非增删改语句
                 log.info("Ignore unsupported dml event type:{}",dmlType.toString());
                 return ;
             }
+
             String dbName = entry.getHeader().getSchemaName();
             String tableName = entry.getHeader().getTableName();
 
             long startTime=System.currentTimeMillis();
             String topicName=data.topic();
+
+            log.debug("receive data change dmlType:{},dbName:{},tableName{},topicName{},rowSize:{}"
+                    ,dmlType.toString(),dbName,tableName,topicName,dmlEvt.getRowsList().size());
+
             //从topicName中匹配源数据库
             SyncConfig syncConfig=sync2any.findSyncConfigByTopicName(topicName);
 
@@ -143,7 +155,8 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String,byt
                 {
                     try
                     {
-                        loadService.operateData(request);
+                        int effectNum =loadService.operateData(request);
+                        log.debug("tableName:{},effect number:{}",tableName,effectNum);
                         //如果没问题，则只执行一次
                         break;
                     }
@@ -289,7 +302,7 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String,byt
         tableMeta.setState(SyncState.STOPPED);
         tableMeta.setErrorReason(Throwables.getStackTraceAsString(e));
         KafkaMessageListenerContainer container=KafkaConfig
-                .getKafkaListener(tableMeta.getDbName(),tableMeta.getTopicGroup(),tableMeta.getTopicName());
+                .getKafkaListener(tableMeta.getSourceDbId(),tableMeta.getTopicGroup(),tableMeta.getTopicName());
         if(container.isRunning())
         {
             container.stop();

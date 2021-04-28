@@ -1,6 +1,7 @@
 package com.jte.sync2any.util;
 
 import com.jte.sync2any.core.Constants;
+import com.jte.sync2any.exception.ShouldNeverHappenException;
 import com.jte.sync2any.model.config.Conn;
 import com.jte.sync2any.model.mysql.MyDatasource;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +20,7 @@ import java.net.URI;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Slf4j
 public class DbUtils {
@@ -86,6 +88,7 @@ public class DbUtils {
         try
         {
             mysqlDs.setDbName(mysqlDs.getConnection().getCatalog());
+            conn.setDbName(mysqlDs.getDbName());
         }
         catch (Exception e)
         {
@@ -100,5 +103,11 @@ public class DbUtils {
     }
 
 
-
+    public static Object getTargetDsByDbId(Map<String, Object> allTargetDatasource, String dbId){
+        Object ds=allTargetDatasource.get(dbId);
+        if(Objects.isNull(ds)){
+            throw new ShouldNeverHappenException("target datasource id not found, dbId:"+dbId);
+        }
+        return ds;
+    }
 }

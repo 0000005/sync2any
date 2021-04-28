@@ -1,5 +1,6 @@
 package com.jte.sync2any.load;
 
+import com.jte.sync2any.load.impl.MysqlLoadServiceImpl;
 import com.jte.sync2any.model.es.CudRequest;
 import com.jte.sync2any.model.mysql.ColumnMeta;
 import com.jte.sync2any.model.mysql.Field;
@@ -69,7 +70,12 @@ public class MysqlLoadServiceImplTest  {
         TableMeta tableMeta =mock(TableMeta.class);
         when(tableMeta.getAllColumnList()).thenReturn(allColumnList);
         when(tableMeta.getTableName()).thenReturn("test");
-        String sql=new MysqlLoadServiceImpl().buildInsertSqlByPks(tableMeta);
+
+        CudRequest cudRequest = new CudRequest();
+        cudRequest.setTableMeta(tableMeta);
+        cudRequest.setTable("test");
+
+        String sql=new MysqlLoadServiceImpl().buildInsertSqlByPks(cudRequest);
         assertEquals("INSERT INTO test (id, groupCode) VALUES (?, ?)",sql);
     }
 
@@ -117,9 +123,13 @@ public class MysqlLoadServiceImplTest  {
         TableMeta tableMeta =mock(TableMeta.class);
         when(tableMeta.getPrimaryKeyOnlyName()).thenReturn(pkNameList);
         when(tableMeta.getTableName()).thenReturn("t_user");
-
         when(tableMeta.getAllColumnList()).thenReturn(allColumnList);
-        String updateSql =new MysqlLoadServiceImpl().buildUpdateSqlByPks(tableMeta);
+
+        CudRequest cudRequest = new CudRequest();
+        cudRequest.setTableMeta(tableMeta);
+        cudRequest.setTable("t_user");
+
+        String updateSql =new MysqlLoadServiceImpl().buildUpdateSqlByPks(cudRequest);
         log.info("updateSQL:{}",updateSql);
         assertEquals("UPDATE t_user SET name = ?, age = ? WHERE id = ?  and group_code = ?  ",updateSql);
     }

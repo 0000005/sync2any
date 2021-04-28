@@ -1,7 +1,6 @@
 package com.jte.sync2any.load;
 
 import com.jte.sync2any.conf.SpringContextUtils;
-import com.jte.sync2any.exception.ShouldNeverHappenException;
 import com.jte.sync2any.model.config.Conn;
 import com.jte.sync2any.model.es.CudRequest;
 import com.jte.sync2any.model.mysql.TableMeta;
@@ -9,7 +8,10 @@ import com.jte.sync2any.util.CollectionUtils;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
@@ -21,14 +23,6 @@ public abstract class AbstractLoadService {
      */
     protected Set<String> LOAD_STORAGE = new HashSet<>();
     private static Map<String,AbstractLoadService> serviceMap = new ConcurrentHashMap<>();
-
-    public Object getTargetDsByDbId(Map<String,Object> allTargetDatasource, String dbId){
-        Object ds=allTargetDatasource.get(dbId);
-        if(Objects.isNull(ds)){
-            throw new ShouldNeverHappenException("target datasource id not found, dbId:"+dbId);
-        }
-        return ds;
-    }
 
     public static AbstractLoadService getLoadService(String targetType)
     {

@@ -1,12 +1,14 @@
-package com.jte.sync2any.load;
+package com.jte.sync2any.load.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.jte.sync2any.exception.ShouldNeverHappenException;
+import com.jte.sync2any.load.AbstractLoadService;
 import com.jte.sync2any.model.config.Conn;
 import com.jte.sync2any.model.es.CudRequest;
 import com.jte.sync2any.model.es.EsDateType;
 import com.jte.sync2any.model.mysql.TableMeta;
+import com.jte.sync2any.util.DbUtils;
 import com.jte.sync2any.util.JsonUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.action.bulk.BulkRequest;
@@ -49,7 +51,7 @@ public class EsLoadServiceImpl extends AbstractLoadService {
     @Override
     public int operateData(CudRequest request) throws IOException {
         checkAndCreateStorage(request.getTableMeta());
-        RestHighLevelClient client = (RestHighLevelClient) getTargetDsByDbId(allTargetDatasource,request.getTableMeta().getTargetDbId());
+        RestHighLevelClient client = (RestHighLevelClient) DbUtils.getTargetDsByDbId(allTargetDatasource,request.getTableMeta().getTargetDbId());
         if(INSERT == request.getDmlType())
         {
             return addData(request,client);
@@ -114,7 +116,7 @@ public class EsLoadServiceImpl extends AbstractLoadService {
         while(it.hasNext())
         {
             TableMeta tableMeta = it.next();
-            RestHighLevelClient client = (RestHighLevelClient) getTargetDsByDbId(allTargetDatasource,tableMeta.getTargetDbId());
+            RestHighLevelClient client = (RestHighLevelClient) DbUtils.getTargetDsByDbId(allTargetDatasource,tableMeta.getTargetDbId());
             List<CudRequest> groupByList = requestMap.get(tableMeta);
 
             BulkRequest bulkRequest = new BulkRequest();
@@ -146,7 +148,7 @@ public class EsLoadServiceImpl extends AbstractLoadService {
      */
     @Override
     public Long countData(String dbId,String table) throws IOException {
-        RestHighLevelClient client = (RestHighLevelClient) getTargetDsByDbId(allTargetDatasource,dbId);
+        RestHighLevelClient client = (RestHighLevelClient) DbUtils.getTargetDsByDbId(allTargetDatasource,dbId);
         Long count=cacheCount.get(table);
         if(Objects.nonNull(count))
         {
@@ -180,7 +182,7 @@ public class EsLoadServiceImpl extends AbstractLoadService {
         boolean indexExists= isIndexExists(tableMeta.getTargetDbId(),indexName);
         if(!indexExists)
         {
-            RestHighLevelClient client = (RestHighLevelClient) getTargetDsByDbId(allTargetDatasource,tableMeta.getTargetDbId());
+            RestHighLevelClient client = (RestHighLevelClient) DbUtils.getTargetDsByDbId(allTargetDatasource,tableMeta.getTargetDbId());
             String mappingJson=generateMappingJson(tableMeta);
             //不存在，创建映射关系
             CreateIndexRequest newMapping = new CreateIndexRequest(indexName);
@@ -204,7 +206,7 @@ public class EsLoadServiceImpl extends AbstractLoadService {
     }
 
     private boolean isIndexExists(String dbId,String indexName) throws IOException {
-        RestHighLevelClient client = (RestHighLevelClient) getTargetDsByDbId(allTargetDatasource,dbId);
+        RestHighLevelClient client = (RestHighLevelClient) DbUtils.getTargetDsByDbId(allTargetDatasource,dbId);
         GetIndexRequest indexRequest = new GetIndexRequest(indexName);
         return client.indices().exists(indexRequest,RequestOptions.DEFAULT);
     }

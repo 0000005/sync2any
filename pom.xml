@@ -12,13 +12,18 @@
 	<artifactId>sync2any</artifactId>
 	<version>1.0.0</version>
 	<name>sync2any</name>
-	<description>sync TDSQL to Elasticsearch</description>
+	<description>sync tencent db to any other datasource you want</description>
 
 	<properties>
 		<java.version>1.8</java.version>
 	</properties>
 
 	<dependencies>
+        <dependency>
+            <groupId>cn.hutool</groupId>
+            <artifactId>hutool-all</artifactId>
+            <version>5.6.3</version>
+        </dependency>
         <dependency>
             <groupId>com.google.protobuf</groupId>
             <artifactId>protobuf-java</artifactId>
@@ -29,11 +34,6 @@
             <artifactId>mockito-core</artifactId>
             <version>3.8.0</version>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.wangfengta</groupId>
-            <artifactId>alarm-sdk</artifactId>
-            <version>1.0.0</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

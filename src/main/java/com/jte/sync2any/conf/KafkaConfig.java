@@ -92,6 +92,7 @@ public class KafkaConfig {
 
         //鉴权信息
         if (StringUtils.isNotBlank(kafkaMate.getUsername())) {
+            log.info("set up kafka authentication, username:{}",kafkaMate.getUsername());
             props.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SASL_PLAINTEXT");
             props.put(SaslConfigs.SASL_MECHANISM, "SCRAM-SHA-512");
             props.put(SaslConfigs.SASL_JAAS_CONFIG,
@@ -102,8 +103,8 @@ public class KafkaConfig {
         return props;
     }
 
-    public static KafkaMessageListenerContainer getKafkaListener(String dbName,String topicGroup,String topicName){
-        String beanName=dbName.toLowerCase()+"_"+topicGroup+"_"+topicName;
+    public static KafkaMessageListenerContainer getKafkaListener(String dbId,String topicGroup,String topicName){
+        String beanName=dbId+"_"+topicGroup+"_"+topicName;
         return KAFKA_SET.stream().filter(k->k.getBeanName().equals(beanName)).findFirst().orElse(null);
     }
 

@@ -1,5 +1,6 @@
 package com.jte.sync2any.transform.impl;
 
+import com.jte.sync2any.load.DynamicDataAssign;
 import com.jte.sync2any.model.es.CudRequest;
 import com.jte.sync2any.model.mysql.TableRecords;
 import com.jte.sync2any.transform.RecordsTransform;
@@ -15,12 +16,15 @@ public class RecordsTransformImpl extends RecordsTransform {
         CudRequest cudRequest = new CudRequest();
         cudRequest.setPkValueStr(getPkValueStr(records));
         cudRequest.setPkValueMap(getPkValueMap(records));
-        cudRequest.setTable(records.getTableMeta().getTargetTableName().toLowerCase());
         cudRequest.setDmlType(records.getDmlEvt().getDmlEventType());
         cudRequest.setParameters(getParameters(records));
         cudRequest.setTableMeta(records.getTableMeta());
+        cudRequest.setTable(DynamicDataAssign.getDynamicTableName(records,records.getTableMeta()));
         return cudRequest;
     }
+
+
+
 
 
 }

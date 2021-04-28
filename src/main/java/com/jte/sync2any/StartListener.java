@@ -3,7 +3,6 @@ package com.jte.sync2any;
 import com.jte.sync2any.conf.KafkaConfig;
 import com.jte.sync2any.conf.RuleConfigParser;
 import com.jte.sync2any.exception.ShouldNeverHappenException;
-import com.jte.sync2any.extract.KafkaMsgListener;
 import com.jte.sync2any.extract.SourceMetaExtract;
 import com.jte.sync2any.extract.SourceOriginDataExtract;
 import com.jte.sync2any.load.AbstractLoadService;
@@ -61,10 +60,14 @@ public class StartListener {
         ruleConfigParser.initRules();
         System.out.println("=======================syncing manifest===========================");
         Map<String, TableMeta> tableRules=RULES_MAP.asMap();
+        if (tableRules.size()==0){
+            log.error("未找到任何的同步任务，请检查配置文件。");
+            System.exit(1);
+        }
         for(String key:tableRules.keySet())
         {
             TableMeta currTableMeta = tableRules.get(key);
-            System.out.println("dbName:"+currTableMeta.getDbName()+",tableName:"+currTableMeta.getTableName()+",esIndex:"+currTableMeta.getTargetTableName()+",topicName:"+currTableMeta.getTopicName());
+            System.out.println("dbName:"+currTableMeta.getDbName()+",tableName:"+currTableMeta.getTableName()+",table:"+currTableMeta.getTargetTableName()+",topicName:"+currTableMeta.getTopicName());
         }
         System.out.println("=======================start river===========================");
         for(String key:tableRules.keySet())
@@ -109,7 +112,7 @@ public class StartListener {
                 //开始同步增量数据
                 currTableMeta.setState(SyncState.SYNCING);
                 KafkaMessageListenerContainer container=KafkaConfig
-                        .getKafkaListener(currTableMeta.getDbName(),currTableMeta.getTopicGroup(),currTableMeta.getTopicName());
+                        .getKafkaListener(currTableMeta.getSourceDbId(),currTableMeta.getTopicGroup(),currTableMeta.getTopicName());
                 if(KafkaConfig.canStartListener(container,currTableMeta.getTopicGroup(),currTableMeta.getTopicName())){
                     log.info("kafka({}) start listening!",container.getBeanName());
                     container.start();
@@ -117,9 +120,10 @@ public class StartListener {
             }
             catch (Exception e)
             {
-                KafkaMsgListener.stopListener(currTableMeta,e);
                 log.error("start river is fail,tableName:{},dbName:{},esIndex:{},topicName:{}",
                         currTableMeta.getTableName(),currTableMeta.getDbName(),currTableMeta.getTargetTableName(),currTableMeta.getTopicName(),e);
+
+                //KafkaMsgListener.stopListener(currTableMeta,e);
             }
         }
     }

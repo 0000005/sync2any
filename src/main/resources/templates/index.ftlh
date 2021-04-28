@@ -49,11 +49,11 @@
                     <th scope="col">#</th>
                     <th scope="col">db name</th>
                     <th scope="col">table name</th>
-                    <th scope="col">es index</th>
+                    <th scope="col">target indexTable</th>
                     <th scope="col">kafka topic</th>
                     <th scope="col">kafka group</th>
                     <th scope="col">
-                        <div data-toggle="tooltip" title="最近一次同步时间">last update time(ms)
+                        <div data-toggle="tooltip" title="最近一次同步时间">last update time
                             <i class="fa fa-info-circle" aria-hidden="true"></i>
                         </div>
                     </th>
