@@ -9,6 +9,4 @@ import org.springframework.stereotype.Component;
 @Data
 public class KafkaMate {
     private String address;
-    private String username;
-    private String password;
 }

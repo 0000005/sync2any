@@ -91,14 +91,14 @@ public class KafkaConfig {
         props.put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, 5000);
 
         //鉴权信息
-        if (StringUtils.isNotBlank(kafkaMate.getUsername())) {
-            log.info("set up kafka authentication, username:{}",kafkaMate.getUsername());
+        if (StringUtils.isNotBlank(mq.getUsername())) {
+            log.info("set up kafka authentication, username:{}",mq.getUsername());
             props.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SASL_PLAINTEXT");
             props.put(SaslConfigs.SASL_MECHANISM, "SCRAM-SHA-512");
             props.put(SaslConfigs.SASL_JAAS_CONFIG,
                     "org.apache.kafka.common.security.scram.ScramLoginModule required " +
-                            "  username=\"" + kafkaMate.getUsername() + "\"" +
-                            "  password=\"" + kafkaMate.getPassword() + "\";");
+                            "  username=\"" + mq.getUsername() + "\"" +
+                            "  password=\"" + mq.getPassword() + "\";");
         }
         return props;
     }

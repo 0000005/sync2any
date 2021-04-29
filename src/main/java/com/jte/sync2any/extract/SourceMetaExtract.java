@@ -9,7 +9,7 @@ public interface SourceMetaExtract {
 
     /**
      * 获取源数据的行数
-     * @param dbName
+     * @param dbId
      * @param tableName
      * @return
      */

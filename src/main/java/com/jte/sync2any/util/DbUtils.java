@@ -92,7 +92,7 @@ public class DbUtils {
         }
         catch (Exception e)
         {
-            log.error("获取数据库名失败",e);
+            log.error("获取数据库名失败,url:{}",conn.getUrl(),e);
         }
         return new JdbcTemplate(mysqlDs);
     }

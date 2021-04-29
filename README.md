@@ -35,8 +35,6 @@ sync2any可以借助腾讯云数据订阅（DTS）将腾讯云数据库（mysql�
 #【必填】腾讯云CKAFKA配置
 kafka:
   address: 127.0.0.1:32768
-  username: test
-  password: test
 
 #【必填】同步目标目标的基本配置（支持mysql和es）
 target.datasources:
@@ -63,7 +61,7 @@ source.mysql:
   datasources:
     -
       #【必填】标识数据源，每个必须不一样
-      db-id:1
+      db-id: 1
       url: jdbc:mysql://127.0.0.1:3306/test?useUnicode=true&useSSL=false&characterEncoding=UTF-8&autoReconnect=true&failOverReadOnly=false&useOldAliasMetadataBehavior=true&allowMultiQueries=true&serverTimezone=Hongkong
       username: test
       password: test
@@ -98,6 +96,10 @@ sync2any:
         topic-name: test-t_member
         #【选填】消费者使用的topicGroup，如果不填写，则随机生成。每次重启本应用都会从kafka的"earliest"处开始读取。
         topic-group: local-test-consumer-group
+        #mq帐号
+        username: test
+        #mq密码
+        password: test
       #【选填】此处可以配置TDSQL到elasticsearch的映射规则
       rules:
         -

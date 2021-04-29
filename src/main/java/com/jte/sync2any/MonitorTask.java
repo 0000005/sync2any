@@ -97,7 +97,7 @@ public class MonitorTask implements Runnable {
         sb.append("sync2any数据同步异常，");
         sb.append("异常原因：");
         sb.append(key);
-        sb.append("异常时间：");
+        sb.append(" 异常：");
         sb.append(value);
         sb.append("秒，源数据库：，");
         sb.append(meta.getDbName());
