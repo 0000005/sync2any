@@ -1,8 +1,10 @@
 package com.jte.sync2any;
 
+import com.jte.sync2any.conf.AlarmConfig;
 import com.jte.sync2any.conf.KafkaConfig;
 import com.jte.sync2any.conf.RuleConfigParser;
 import com.jte.sync2any.exception.ShouldNeverHappenException;
+import com.jte.sync2any.extract.KafkaMsgListener;
 import com.jte.sync2any.extract.SourceMetaExtract;
 import com.jte.sync2any.extract.SourceOriginDataExtract;
 import com.jte.sync2any.load.AbstractLoadService;
@@ -48,6 +50,9 @@ public class StartListener {
 
     @Resource
     TargetDatasources targetDatasources;
+
+    @Resource
+    AlarmConfig alarmConfig;
     /**
      * 1、获取所有要同步的表
      * 2、每一张表检查是否要同步原始数据
@@ -123,9 +128,12 @@ public class StartListener {
                 log.error("start river is fail,tableName:{},dbName:{},esIndex:{},topicName:{}",
                         currTableMeta.getTableName(),currTableMeta.getDbName(),currTableMeta.getTargetTableName(),currTableMeta.getTopicName(),e);
 
-                //KafkaMsgListener.stopListener(currTableMeta,e);
+                KafkaMsgListener.stopListener(currTableMeta,e);
             }
         }
+
+        //开启监控
+        alarmConfig.startMonitor();
     }
 
 }

@@ -1,6 +1,7 @@
 package com.jte.sync2any.extract;
 
 import com.google.common.base.Throwables;
+import com.jte.sync2any.MonitorTask;
 import com.jte.sync2any.conf.KafkaConfig;
 import com.jte.sync2any.conf.RuleConfigParser;
 import com.jte.sync2any.load.AbstractLoadService;
@@ -35,9 +36,9 @@ import static com.jte.sync2any.model.mq.SubscribeDataProto.DMLType.*;
  * kafka消息接收器
  */
 @Slf4j
-public class KafkaMsgListener implements AcknowledgingMessageListener<String,byte[]> {
+public class KafkaMsgListener implements AcknowledgingMessageListener<String, byte[]> {
 
-    public static final int MAX_RETRY_TIMES =3;
+    public static final int MAX_RETRY_TIMES = 3;
 
     private Sync2any sync2any;
     private RecordsTransform transform;
@@ -51,146 +52,135 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String,byt
 
     private HashMap<String, ByteArrayOutputStream> shardMsgMap = new HashMap<>();
 
-    public KafkaMsgListener(RecordsTransform transform, Sync2any sync2any)
-    {
+    public KafkaMsgListener(RecordsTransform transform, Sync2any sync2any) {
         this.transform = transform;
         this.sync2any = sync2any;
     }
 
     @Override
-    public void onMessage(ConsumerRecord<String,byte[]> data, Acknowledgment acknowledgment)
-    {
+    public void onMessage(ConsumerRecord<String, byte[]> data, Acknowledgment acknowledgment) {
+        try {
+            SubscribeDataProto.Entries entries = parseFromMq(data);
+            if (Objects.isNull(entries)) {
+                return;
+            }
 
-        SubscribeDataProto.Entries entries = parseFromMq(data);
-        if(Objects.isNull(entries))
-        {
-            return ;
+            for (SubscribeDataProto.Entry entry : entries.getItemsList()) {
+                processEntry(data, entry);
+            }
+
+            // commit at checkpoint message
+            if (entries.getItemsCount() > 0 && entries.getItems(0).getHeader().getMessageType() == SubscribeDataProto.MessageType.CHECKPOINT) {
+                acknowledgment.acknowledge();
+            }
+        } catch (Exception e) {
+            MonitorTask.ERROR_TOPIC_LIST.add(data.topic());
+            log.error("syncing data error:", e);
         }
 
-        for (SubscribeDataProto.Entry entry : entries.getItemsList()) {
-            processEntry(data,entry);
-        }
-
-        // commit at checkpoint message
-        if (entries.getItemsCount() > 0 && entries.getItems(0).getHeader().getMessageType() == SubscribeDataProto.MessageType.CHECKPOINT) {
-            acknowledgment.acknowledge();
-        }
     }
 
     /**
      * 处理每一行记录
+     *
      * @param data
      * @param entry
      */
-    private void processEntry(ConsumerRecord<String,byte[]> data,SubscribeDataProto.Entry entry) {
-        try
-        {
+    private void processEntry(ConsumerRecord<String, byte[]> data, SubscribeDataProto.Entry entry) {
+        try {
             SubscribeDataProto.Header header = entry.getHeader();
             log.debug("-->[kafka partition: {}, kafka offset: {}, partitionSeq: {}] [{}], binlog timestamp: {}",
                     data.partition(),
                     data.offset(),
                     getPartitionSeq(data),
                     header.getFileName(), header.getPosition(),
-                    LocalDateTime.ofInstant(Instant.ofEpochSecond(header.getTimestamp()),TimeZone.getDefault().toZoneId()));
+                    LocalDateTime.ofInstant(Instant.ofEpochSecond(header.getTimestamp()), TimeZone.getDefault().toZoneId()));
 
 
-            SubscribeDataProto.MessageType messageType=entry.getHeader().getMessageType();
-            if(!SubscribeDataProto.MessageType.DML.equals(messageType))
-            {
-                if(SubscribeDataProto.MessageType.BEGIN.equals(messageType)||SubscribeDataProto.MessageType.COMMIT.equals(messageType)||SubscribeDataProto.MessageType.CHECKPOINT.equals(messageType))
-                {
+            SubscribeDataProto.MessageType messageType = entry.getHeader().getMessageType();
+            if (!SubscribeDataProto.MessageType.DML.equals(messageType)) {
+                if (SubscribeDataProto.MessageType.BEGIN.equals(messageType) || SubscribeDataProto.MessageType.COMMIT.equals(messageType) || SubscribeDataProto.MessageType.CHECKPOINT.equals(messageType)) {
                     //不打印begin\commit\checkpoint，日志太多了。
                     return;
                 }
                 //非增删改语句
-                log.info("Ignore unsupported message type:{}",messageType.toString());
-                return ;
+                log.info("Ignore unsupported message type:{}", messageType.toString());
+                return;
             }
 
             SubscribeDataProto.DMLEvent dmlEvt = entry.getEvent().getDmlEvent();
             SubscribeDataProto.DMLType dmlType = dmlEvt.getDmlEventType();
-            if(!dmlType.equals(INSERT)&&!dmlType.equals(UPDATE)&&!dmlType.equals(DELETE))
-            {
+            if (!dmlType.equals(INSERT) && !dmlType.equals(UPDATE) && !dmlType.equals(DELETE)) {
                 //非增删改语句
-                log.info("Ignore unsupported dml event type:{}",dmlType.toString());
-                return ;
+                log.info("Ignore unsupported dml event type:{}", dmlType.toString());
+                return;
             }
 
             String dbName = entry.getHeader().getSchemaName();
             String tableName = entry.getHeader().getTableName();
 
-            long startTime=System.currentTimeMillis();
-            String topicName=data.topic();
+            long startTime = System.currentTimeMillis();
+            String topicName = data.topic();
 
             log.debug("receive data change dmlType:{},dbName:{},tableName{},topicName{},rowSize:{}"
-                    ,dmlType.toString(),dbName,tableName,topicName,dmlEvt.getRowsList().size());
+                    , dmlType.toString(), dbName, tableName, topicName, dmlEvt.getRowsList().size());
 
             //从topicName中匹配源数据库
-            SyncConfig syncConfig=sync2any.findSyncConfigByTopicName(topicName);
+            SyncConfig syncConfig = sync2any.findSyncConfigByTopicName(topicName);
 
-            TableMeta tableMeta=RuleConfigParser.RULES_MAP
-                    .getIfPresent(syncConfig.getSourceDbId()+"$"+tableName.toLowerCase());
-            if(Objects.isNull(tableMeta))
-            {
-                log.warn("tableMeta not found when receive msg from mq. this msg will be ignored. db:{}.{}",dbName,tableName);
-                return ;
+            TableMeta tableMeta = RuleConfigParser.RULES_MAP
+                    .getIfPresent(syncConfig.getSourceDbId() + "$" + tableName.toLowerCase());
+            if (Objects.isNull(tableMeta)) {
+                log.warn("tableMeta not found when receive msg from mq. this msg will be ignored. db:{}.{}", dbName, tableName);
+                return;
             }
 
-            for (SubscribeDataProto.RowChange row : dmlEvt.getRowsList())
-            {
+            for (SubscribeDataProto.RowChange row : dmlEvt.getRowsList()) {
 
                 //将mq的信息转为mysql形式，且已经进行了规则的处理
-                TableRecords tableRecords=TableRecords.buildRecords(tableMeta,row,dmlEvt);
+                TableRecords tableRecords = TableRecords.buildRecords(tableMeta, row, dmlEvt);
                 //将tableRecords 转化为可操作的形式
                 AbstractLoadService loadService = AbstractLoadService.getLoadService(syncConfig.getTargetType());
-                CudRequest request=transform.transform(tableRecords);
+                CudRequest request = transform.transform(tableRecords);
 
-                if(Objects.isNull(request))
-                {
-                    log.error("CudRequest 为null,mq:{}",data.value());
+                if (Objects.isNull(request)) {
+                    log.error("CudRequest 为null,mq:{}", data.value());
                 }
 
                 //将信息同步到es中，如果失败，则重试3次
-                for(int i =1;i<=MAX_RETRY_TIMES && !Objects.isNull(request); i++)
-                {
-                    try
-                    {
-                        int effectNum =loadService.operateData(request);
-                        log.debug("tableName:{},effect number:{}",tableName,effectNum);
+                for (int i = 1; i <= MAX_RETRY_TIMES && !Objects.isNull(request); i++) {
+                    try {
+                        int effectNum = loadService.operateData(request);
+                        log.debug("tableName:{},effect number:{}", tableName, effectNum);
                         //如果没问题，则只执行一次
                         break;
-                    }
-                    catch (Exception esEx)
-                    {
-                        log.error("load data error,retry times count:"+i,esEx);
-                        if(i==3)
-                        {
+                    } catch (Exception esEx) {
+                        log.error("load data error,retry times count:" + i, esEx);
+                        if (i == 3) {
                             throw esEx;
                         }
                     }
                 }
-                updateStatics(tableMeta,header.getTimestamp(),startTime);
+                updateStatics(tableMeta, header.getTimestamp(), startTime);
             }
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             //TODO 触发告警
-            log.error("处理消息失败，topic:{},offset:{},partition:{}",data.topic(),data.offset(),data.partition(),e);
+            log.error("处理消息失败，topic:{},offset:{},partition:{}", data.topic(), data.offset(), data.partition(), e);
         }
 
     }
 
     /**
      * 将mq中的字节流消息转化为proto的形式
+     *
      * @param data
      * @return
      * @throws IOException
      */
-    public SubscribeDataProto.Entries parseFromMq(ConsumerRecord<String,byte[]> data){
+    public SubscribeDataProto.Entries parseFromMq(ConsumerRecord<String, byte[]> data) {
 
-        SubscribeDataProto.Entries entries=null;
-        try
-        {
+        SubscribeDataProto.Entries entries = null;
+        try {
             //kafka 分区号
             long partitionId = data.partition();
             //消息序号
@@ -198,7 +188,7 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String,byt
             //数据库分片id
             String shardId = getShardId(data);
 
-            String positionKey=shardId+"$"+partitionId;
+            String positionKey = shardId + "$" + partitionId;
             Long shardLastSeq = lastSeqMap.get(positionKey);
 
             //初始化消息序号
@@ -233,7 +223,7 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String,byt
             }
 
             if (envelope.getIndex() < envelope.getTotal() - 1) {
-                log.warn("本次接受到的数据包不完整，继续拼装数据。index:{} , total:{}",envelope.getIndex(),envelope.getTotal());
+                log.warn("本次接受到的数据包不完整，继续拼装数据。index:{} , total:{}", envelope.getIndex(), envelope.getTotal());
                 return null;
             }
 
@@ -242,11 +232,9 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String,byt
             } else {
                 entries = SubscribeDataProto.Entries.parseFrom(shardMsgMap.get(shardId).toByteArray());
             }
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             //TODO 触发告警
-            log.error("解析mq消息失败，topic:{},offset:{},partition:{}",data.topic(),data.offset(),data.partition(),e);
+            log.error("解析mq消息失败，topic:{},offset:{},partition:{}", data.topic(), data.offset(), data.partition(), e);
         }
 
         return entries;
@@ -254,16 +242,17 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String,byt
 
     /**
      * 更新统计信息
+     *
      * @param tableMeta
      * @param time
      * @param startTime
      */
-    private void updateStatics(TableMeta tableMeta,int time,long startTime){
-        long dataUpdateTime=new BigDecimal(time).multiply(new BigDecimal(1000)).longValue();
+    private void updateStatics(TableMeta tableMeta, int time, long startTime) {
+        long dataUpdateTime = new BigDecimal(time).multiply(new BigDecimal(1000)).longValue();
         tableMeta.setLastDataManipulateTime(dataUpdateTime);
-        long endTime=System.currentTimeMillis();
+        long endTime = System.currentTimeMillis();
         tableMeta.setLastSyncTime(endTime);
-        tableMeta.setTpq(endTime-startTime);
+        tableMeta.setTpq(endTime - startTime);
     }
 
 
@@ -293,23 +282,19 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String,byt
     }
 
 
-    public static void stopListener(TableMeta tableMeta,Exception e)
-    {
-        if(Objects.isNull(tableMeta.getDbName()))
-        {
+    public static void stopListener(TableMeta tableMeta, Exception e) {
+        if (Objects.isNull(tableMeta.getDbName())) {
             return;
         }
         tableMeta.setState(SyncState.STOPPED);
         tableMeta.setErrorReason(Throwables.getStackTraceAsString(e));
-        KafkaMessageListenerContainer container=KafkaConfig
-                .getKafkaListener(tableMeta.getSourceDbId(),tableMeta.getTopicGroup(),tableMeta.getTopicName());
-        if(container.isRunning())
-        {
+        KafkaMessageListenerContainer container = KafkaConfig
+                .getKafkaListener(tableMeta.getSourceDbId(), tableMeta.getTopicGroup(), tableMeta.getTopicName());
+        if (container.isRunning()) {
             container.stop();
         }
-        log.warn("kafka listener '{}' is stopped!",container.getBeanName());
+        log.warn("kafka listener '{}' is stopped!", container.getBeanName());
     }
-
 
 
 }

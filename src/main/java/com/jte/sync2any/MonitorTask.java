@@ -7,6 +7,8 @@ import com.jte.sync2any.model.mysql.TableMeta;
 import com.jte.sync2any.util.AlertUtils;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -16,6 +18,20 @@ public class MonitorTask implements Runnable {
 
     private Map<String, TableMeta> tableRules;
     private Sync2any sync2any;
+    /**
+     * 同步消息时发生错误的Topic。
+     */
+    public static List<String> ERROR_TOPIC_LIST = new ArrayList<>();
+    /**
+     * 同步消息时发送的错误，2个小时检测一次
+     */
+    private final int errorTopicAlertTimeGap = 60 * 60 * 2;
+    private int currentErrorTopicAlertTimeGap = 0;
+
+    /**
+     * 阁多少秒循环检测一次
+     */
+    public static int LOOP_WAITING_TIME = 6;
 
     public MonitorTask(Map<String, TableMeta> tableRules, Sync2any sync2any) {
         this.tableRules = tableRules;
@@ -25,6 +41,19 @@ public class MonitorTask implements Runnable {
     @Override
     public void run() {
         log.debug("run monitor...");
+        //检测kafka同步过程中是否出错
+        //计时累计
+        currentErrorTopicAlertTimeGap = currentErrorTopicAlertTimeGap + LOOP_WAITING_TIME;
+        if (currentErrorTopicAlertTimeGap > errorTopicAlertTimeGap) {
+            if (ERROR_TOPIC_LIST.isEmpty()) {
+                AlertUtils.sendAlert(sync2any.getAlert().getSecret(), "发现有消息同步失败:" + ERROR_TOPIC_LIST.toString());
+                ERROR_TOPIC_LIST.clear();
+            }
+            //置空重新计时
+            currentErrorTopicAlertTimeGap = 0;
+        }
+
+        //检测每个表的同步状况
         for (SyncConfig config : sync2any.getSyncConfigList()) {
             int maxDelayInSecond = config.getMaxDelayInSecond();
             int maxIdleInMinute = config.getMaxIdleInMinute();
@@ -51,26 +80,19 @@ public class MonitorTask implements Runnable {
 
                 //意外停止
                 if (currTableMeta.getState().equals(SyncState.STOPPED)) {
-                    try {
-                        String msg = assembleAlertParam(currTableMeta, "意外停止同步", currTableMeta.getErrorReason());
-                        AlertUtils.sendAlert(sync2any.getAlert().getSecret(),msg);
-                        currTableMeta.setLastAlarmTime(System.currentTimeMillis());
-                        continue;
-                    } catch (Exception e) {
-                        log.error("stopped alarm fail,", e);
-                    }
+                    String msg = assembleAlertParam(currTableMeta, "意外停止同步", currTableMeta.getErrorReason());
+                    AlertUtils.sendAlert(sync2any.getAlert().getSecret(), msg);
+                    currTableMeta.setLastAlarmTime(System.currentTimeMillis());
+                    continue;
                 }
 
                 //同步延迟
                 long delay = currTableMeta.getLastSyncTime() - currTableMeta.getLastDataManipulateTime();
                 if (maxDelayInSecond != -1 && (delay / 1000) > maxDelayInSecond) {
-                    try {
-                        String msg = assembleAlertParam(currTableMeta, "延迟时间超过阈值", String.valueOf((delay / 1000)));
-                        AlertUtils.sendAlert(sync2any.getAlert().getSecret(),msg);
-                        currTableMeta.setLastAlarmTime(System.currentTimeMillis());
-                    } catch (Exception e) {
-                        log.error("delay alarm fail,", e);
-                    }
+                    String msg = assembleAlertParam(currTableMeta, "延迟时间超过阈值", String.valueOf((delay / 1000)));
+                    AlertUtils.sendAlert(sync2any.getAlert().getSecret(), msg);
+                    currTableMeta.setLastAlarmTime(System.currentTimeMillis());
+                    continue;
                 }
 
                 //空闲时间
@@ -80,13 +102,10 @@ public class MonitorTask implements Runnable {
                 }
                 long idleTimeInMinute = idle / 1000 / 60;
                 if (maxIdleInMinute != -1 && idleTimeInMinute > maxIdleInMinute) {
-                    try {
-                        String msg = assembleAlertParam(currTableMeta, "空闲时间超过阈值，", String.valueOf(idleTimeInMinute*60));
-                        AlertUtils.sendAlert(sync2any.getAlert().getSecret(),msg);
-                        currTableMeta.setLastAlarmTime(System.currentTimeMillis());
-                    } catch (Exception e) {
-                        log.error("idle alarm fail,", e);
-                    }
+                    String msg = assembleAlertParam(currTableMeta, "空闲时间超过阈值，", String.valueOf(idleTimeInMinute * 60));
+                    AlertUtils.sendAlert(sync2any.getAlert().getSecret(), msg);
+                    currTableMeta.setLastAlarmTime(System.currentTimeMillis());
+                    continue;
                 }
             }
         }

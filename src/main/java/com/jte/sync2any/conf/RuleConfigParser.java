@@ -37,7 +37,7 @@ public class RuleConfigParser {
 
 
     /**
-     * key: dbId$tableName
+     * key: sourceDbId$tableName
      * value: TableMeta
      */
     public static final Cache<String, TableMeta> RULES_MAP = CacheBuilder.newBuilder().build();
