@@ -62,6 +62,11 @@ public class TableMeta {
     private long tpq;
 
     /**
+     * last kafka offset
+     */
+    private long lastOffset;
+
+    /**
      *  error reason for stop sync
      */
     private String errorReason;
@@ -324,5 +329,13 @@ public class TableMeta {
 
     public void setShardingKey(String shardingKey) {
         this.shardingKey = shardingKey;
+    }
+
+    public long getLastOffset() {
+        return lastOffset;
+    }
+
+    public void setLastOffset(long lastOffset) {
+        this.lastOffset = lastOffset;
     }
 }

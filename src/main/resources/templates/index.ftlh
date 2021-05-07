@@ -50,8 +50,9 @@
                     <th scope="col">db name</th>
                     <th scope="col">table name</th>
                     <th scope="col">target indexTable</th>
-                    <th scope="col">kafka topic</th>
-                    <th scope="col">kafka group</th>
+                    <th scope="col">topic</th>
+                    <th scope="col">group</th>
+                    <th scope="col">offset</th>
                     <th scope="col">
                         <div data-toggle="tooltip" title="最近一次同步时间">last update time
                             <i class="fa fa-info-circle" aria-hidden="true"></i>
@@ -79,6 +80,7 @@
                     <td>${d.esIndexName}</td>
                     <td>${d.topicName}</td>
                     <td>${d.topicGroup}</td>
+                    <td>${d.lastOffset}</td>
                     <td>${d.lastSyncTime}</td>
                     <td>${d.delay}</td>
                     <td>${d.tpq}</td>

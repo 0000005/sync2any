@@ -37,7 +37,7 @@ public class RuleConfigParser {
 
 
     /**
-     * key: sourceDbId$tableName
+     * key: sourceDbId$sourceTableName
      * value: TableMeta
      */
     public static final Cache<String, TableMeta> RULES_MAP = CacheBuilder.newBuilder().build();
@@ -46,6 +46,10 @@ public class RuleConfigParser {
     private SourceMetaExtract sourceMetaExtract;
     @Resource
     private Sync2any sync2any;
+
+    public static TableMeta getTableMeta(String sourceDbId,String tableName){
+        return RULES_MAP.getIfPresent(sourceDbId+"$"+tableName);
+    }
 
     public void initRules() {
         this.checkConfig();

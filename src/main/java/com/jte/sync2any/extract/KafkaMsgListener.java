@@ -147,7 +147,7 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String, by
                     log.error("CudRequest 为null,mq:{}", data.value());
                 }
 
-                //将信息同步到es中，如果失败，则重试3次
+                //将信息同步到目标数据库中中，如果失败，则重试3次
                 for (int i = 1; i <= MAX_RETRY_TIMES && !Objects.isNull(request); i++) {
                     try {
                         int effectNum = loadService.operateData(request);
@@ -161,10 +161,11 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String, by
                         }
                     }
                 }
-                updateStatics(tableMeta, header.getTimestamp(), startTime);
+                updateStatics(tableMeta, header.getTimestamp(), startTime,data.offset());
             }
         } catch (Exception e) {
-            //TODO 触发告警
+            //触发告警
+            MonitorTask.ERROR_TOPIC_LIST.add(data.topic());
             log.error("处理消息失败，topic:{},offset:{},partition:{}", data.topic(), data.offset(), data.partition(), e);
         }
 
@@ -247,12 +248,13 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String, by
      * @param time
      * @param startTime
      */
-    private void updateStatics(TableMeta tableMeta, int time, long startTime) {
+    private void updateStatics(TableMeta tableMeta, int time, long startTime,long offset) {
         long dataUpdateTime = new BigDecimal(time).multiply(new BigDecimal(1000)).longValue();
         tableMeta.setLastDataManipulateTime(dataUpdateTime);
         long endTime = System.currentTimeMillis();
         tableMeta.setLastSyncTime(endTime);
         tableMeta.setTpq(endTime - startTime);
+        tableMeta.setLastOffset(offset);
     }
 
 
@@ -282,9 +284,9 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String, by
     }
 
 
-    public static void stopListener(TableMeta tableMeta, Exception e) {
+    public static KafkaMessageListenerContainer stopListener(TableMeta tableMeta, Exception e) {
         if (Objects.isNull(tableMeta.getDbName())) {
-            return;
+            return null;
         }
         tableMeta.setState(SyncState.STOPPED);
         tableMeta.setErrorReason(Throwables.getStackTraceAsString(e));
@@ -292,8 +294,11 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String, by
                 .getKafkaListener(tableMeta.getSourceDbId(), tableMeta.getTopicGroup(), tableMeta.getTopicName());
         if (container.isRunning()) {
             container.stop();
+            log.warn("kafka listener '{}' is stopped!", container.getBeanName());
+        }else{
+            log.warn("kafka listener '{}' is not running, skip stop action!", container.getBeanName());
         }
-        log.warn("kafka listener '{}' is stopped!", container.getBeanName());
+        return container;
     }
 
 

@@ -70,7 +70,7 @@ source.mysql:
 sync2any:
   #【选填】mysqldump工具的地址
   mysqldump: D:\program\mysql-5.7.25-winx64\bin\mysqldump.exe
-  #【选填】监控告警，只有填写了此参数才能开启监控告警，具体配置参考下面章节
+  #【选填】监控告警，只有填写了此参数才能开启监控告警，具体配置参考下面章节。多个secret用逗号分隔。
   alert:
     secret: aaaa
     
