@@ -1,5 +1,6 @@
 package com.jte.sync2any;
 
+import com.jte.sync2any.conf.RuleConfigParser;
 import com.jte.sync2any.model.config.Sync2any;
 import com.jte.sync2any.model.config.SyncConfig;
 import com.jte.sync2any.model.core.SyncState;
@@ -7,10 +8,7 @@ import com.jte.sync2any.model.mysql.TableMeta;
 import com.jte.sync2any.util.AlertUtils;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -38,6 +36,12 @@ public class MonitorTask implements Runnable {
         this.sync2any = sync2any;
     }
 
+    /**
+     * 记录延迟的Mq。
+     * 格式：topicGroup,topicName
+     */
+    private Set<String> delayMqSet = new HashSet<>();
+
     @Override
     public void run() {
         log.debug("run monitor...");
@@ -53,7 +57,9 @@ public class MonitorTask implements Runnable {
             currentErrorTopicAlertTimeGap = 0;
         }
 
-        //检测每个表的同步状况
+        //延迟以队列为单位检测
+        List<TableMeta> delayTableMetaList = new ArrayList<>();
+        //空闲时间和意外停止以表为单位检测
         for (SyncConfig config : sync2any.getSyncConfigList()) {
             int maxDelayInSecond = config.getMaxDelayInSecond();
             int maxIdleInMinute = config.getMaxIdleInMinute();
@@ -68,7 +74,7 @@ public class MonitorTask implements Runnable {
             for (String metaKey : metaKeySet) {
 
                 TableMeta currTableMeta = tableRules.get(metaKey);
-                if (currTableMeta.getState().equals(SyncState.WAITING) || currTableMeta.getState().equals(SyncState.LOADING_ORIGIN_DATA)) {
+                if (currTableMeta.getState().equals(SyncState.INACTIVE) || currTableMeta.getState().equals(SyncState.WAIT_TO_LISTENING) || currTableMeta.getState().equals(SyncState.LOADING_ORIGIN_DATA)) {
                     continue;
                 }
 
@@ -89,8 +95,7 @@ public class MonitorTask implements Runnable {
                 //同步延迟
                 long delay = currTableMeta.getLastSyncTime() - currTableMeta.getLastDataManipulateTime();
                 if (maxDelayInSecond != -1 && (delay / 1000) > maxDelayInSecond) {
-                    String msg = assembleAlertParam(currTableMeta, "延迟时间超过阈值", String.valueOf((delay / 1000)));
-                    AlertUtils.sendAlert(sync2any.getAlert().getSecret(), msg);
+                    delayTableMetaList.add(currTableMeta);
                     currTableMeta.setLastAlarmTime(System.currentTimeMillis());
                     continue;
                 }
@@ -106,6 +111,40 @@ public class MonitorTask implements Runnable {
                     AlertUtils.sendAlert(sync2any.getAlert().getSecret(), msg);
                     currTableMeta.setLastAlarmTime(System.currentTimeMillis());
                     continue;
+                }
+            }
+        }
+
+        //延迟按队列统一发送告警
+        delayTableMetaList.stream().map(e -> e.getTopicGroup() + "," + e.getTopicName())
+                .distinct()
+                .forEach(e -> {
+                    delayMqSet.add(e);
+                    String topicGroup = e.split(",")[0];
+                    String topicName = e.split(",")[1];
+                    List<TableMeta> tableMetaList = RuleConfigParser.getTableMetaListByMq(topicName,topicGroup);
+                    String tableNames = tableMetaList.stream().map(TableMeta::getTableName).collect(Collectors.joining(","));
+                    AlertUtils.sendAlert(sync2any.getAlert().getSecret(), "数据同步延迟超过阈值。队列："+topicName+"，消费组："+topicGroup+"，影响的源表："+tableNames);
+                });
+
+        //检查延迟是否已经恢复
+        for(Iterator<String> it = delayMqSet.iterator();it.hasNext();){
+            String key = it.next();
+            String topicGroup = key.split(",")[0];
+            String topicName = key.split(",")[1];
+            List<TableMeta> tableMetaList = RuleConfigParser.getTableMetaListByMq(topicName,topicGroup);
+            int delayCount = 0;
+            for(TableMeta tm : tableMetaList){
+                int maxDelayInSecond = tm.getSyncConfig().getMaxDelayInSecond();
+                //同步延迟
+                long delay = tm.getLastSyncTime() - tm.getLastDataManipulateTime();
+                if (maxDelayInSecond != -1 && (delay / 1000) > maxDelayInSecond) {
+                    delayCount ++;
+                    break;
+                }
+                if(delayCount == 0){
+                    it.remove();
+                    AlertUtils.sendAlert(sync2any.getAlert().getSecret(), "数据同步延迟已经恢复。队列："+topicName+"，消费组："+topicGroup);
                 }
             }
         }

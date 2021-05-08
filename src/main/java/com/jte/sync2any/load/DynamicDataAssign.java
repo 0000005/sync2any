@@ -96,9 +96,6 @@ public abstract class DynamicDataAssign {
             return null;
         }
         Row row = rowList.get(0);
-        row.getFields().forEach(e->{
-            log.debug("column name:"+e.getName());
-        });
         Field field = row.getFields().stream().filter(e -> e.getName().equals(shardingKey)).findAny().orElse(null);
         return field.getValue();
     }

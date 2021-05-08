@@ -6,6 +6,7 @@ import com.jte.sync2any.extract.KafkaMsgListener;
 import com.jte.sync2any.model.config.Mq;
 import com.jte.sync2any.model.config.Sync2any;
 import com.jte.sync2any.model.config.SyncConfig;
+import com.jte.sync2any.model.core.SyncState;
 import com.jte.sync2any.model.mysql.TableMeta;
 import com.jte.sync2any.util.DateUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -57,6 +58,7 @@ public class StateController {
             row.put("state", meta.getState().desc());
             row.put("lastSyncTime", DateUtils.formatDate(new Date(meta.getLastSyncTime()), DateUtils.SHORT));
             row.put("tpq", meta.getTpq() + "");
+            row.put("lastOffset", meta.getLastOffset() + "");
             row.put("errorReason", meta.getErrorReason() + "");
             i++;
             mapList.add(row);
@@ -68,22 +70,21 @@ public class StateController {
     /**
      * 重新设置kafka的fooset
      * @param topicName
+     * @param topicGroup
      * @param sourceDbId 原始数据库id
-     * @param tableName 原始表名
      * @param offset
      * @return
      */
     @ResponseBody
     @PutMapping("offset")
-    public String resetOffset(String topicName, String sourceDbId, String tableName, Long offset) {
-        if(StringUtils.isBlank(topicName)||StringUtils.isBlank(sourceDbId)||StringUtils.isBlank(tableName)||offset==null){
+    public String resetOffset(String topicName, String topicGroup , String sourceDbId, Long offset) {
+        if(StringUtils.isBlank(topicName)||StringUtils.isBlank(sourceDbId)||StringUtils.isBlank(topicGroup)||offset==null){
             return "param error";
         }
         SyncConfig syncConfig = sync2any.findSyncConfigByTopicName(topicName);
         Mq mq = syncConfig.getMq();
-        TableMeta tableMeta = RuleConfigParser.getTableMeta(sourceDbId, tableName);
         //停止当前的消费者
-        KafkaMessageListenerContainer container = KafkaMsgListener.stopListener(tableMeta, new RuntimeException("reset kafka offset"));
+        KafkaMessageListenerContainer container = KafkaMsgListener.stopListener(topicName,topicGroup,sourceDbId, new RuntimeException("reset kafka offset"));
         KAFKA_SET.remove(container);
 
         //启动新的消费者
@@ -92,6 +93,11 @@ public class StateController {
             log.info("kafka({}) start listening!",container.getBeanName());
             container.start();
             KAFKA_SET.add(container);
+            //找到这个topicName 和 topicGroup对应的所有table,设置为同步中
+            List<TableMeta> tableMetaList = RuleConfigParser.getTableMetaListByMq(topicName,topicGroup);
+            tableMetaList.forEach(t->{
+                t.setState(SyncState.SYNCING);
+            });
             return  "ok";
         } else {
             log.info("failed to start listening!", container.getBeanName());

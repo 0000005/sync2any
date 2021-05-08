@@ -22,21 +22,26 @@ package com.jte.sync2any.model.core;
  */
 public enum SyncState {
     /**
-     * waiting to start
+     * init state
      */
-    WAITING(0,"等待启动"),
-    /**
-     * sync is stopped
-     */
-    STOPPED(1,"已停止"),
+    INACTIVE(0,"初始状态，未激活"),
+
     /**
      * loading origin data
      */
-    LOADING_ORIGIN_DATA(2,"正在载入原始数据"),
+    LOADING_ORIGIN_DATA(1,"正在载入原始数据"),
+    /**
+     * waiting to start listening
+     */
+    WAIT_TO_LISTENING(2,"等待监听队列"),
     /**
      * sync is running
      */
-    SYNCING(3,"同步中");
+    SYNCING(3,"同步中"),
+    /**
+     * sync is stopped
+     */
+    STOPPED(4,"已停止");
 
     private int i;
     private String desc;

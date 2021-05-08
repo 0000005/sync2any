@@ -105,13 +105,19 @@ public class StartListener {
                     log.warn("skip dump origin data,tableName:{},dbName:{},esIndex:{},topicName:{}",
                             currTableMeta.getTableName(), currTableMeta.getDbName(), currTableMeta.getTargetTableName(), currTableMeta.getTopicName());
                 }
-                //开始同步增量数据
-                currTableMeta.setState(SyncState.SYNCING);
+                //等待同步增量数据
+                currTableMeta.setState(SyncState.WAIT_TO_LISTENING);
                 KafkaMessageListenerContainer container = KafkaConfig
                         .getKafkaListener(currTableMeta.getSourceDbId(), currTableMeta.getTopicGroup(), currTableMeta.getTopicName());
                 if (KafkaConfig.canStartListener(container, currTableMeta.getTopicGroup(), currTableMeta.getTopicName())) {
+                    //开始同步增量数据
                     log.info("kafka({}) start listening!", container.getBeanName());
                     container.start();
+                    List<TableMeta> tableMetaList = RuleConfigParser
+                            .getTableMetaListByMq(currTableMeta.getTopicName(),currTableMeta.getTopicGroup());
+                    tableMetaList.forEach(t->{
+                        t.setState(SyncState.SYNCING);
+                    });
                 } else {
                     log.info("failed to start listening!", container.getBeanName());
                 }
@@ -119,7 +125,7 @@ public class StartListener {
                 log.error("start river is fail,tableName:{},dbName:{},esIndex:{},topicName:{}",
                         currTableMeta.getTableName(), currTableMeta.getDbName(), currTableMeta.getTargetTableName(), currTableMeta.getTopicName(), e);
 
-                KafkaMsgListener.stopListener(currTableMeta, e);
+                KafkaMsgListener.stopListener(currTableMeta.getTopicName(),currTableMeta.getTopicGroup(),currTableMeta.getSourceDbId(), e);
             }
         }
 

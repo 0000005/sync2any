@@ -25,10 +25,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Objects;
-import java.util.TimeZone;
+import java.util.*;
 
 import static com.jte.sync2any.model.mq.SubscribeDataProto.DMLType.*;
 
@@ -284,15 +281,18 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String, by
     }
 
 
-    public static KafkaMessageListenerContainer stopListener(TableMeta tableMeta, Exception e) {
-        if (Objects.isNull(tableMeta.getDbName())) {
-            return null;
-        }
-        tableMeta.setState(SyncState.STOPPED);
-        tableMeta.setErrorReason(Throwables.getStackTraceAsString(e));
+    public static KafkaMessageListenerContainer stopListener(String topicName, String topicGroup , String sourceDbId, Exception e) {
+
+        //找到这个topicName 和 topicGroup对应的所有table,设置为停止
+        List<TableMeta> tableMetaList = RuleConfigParser.getTableMetaListByMq(topicName,topicGroup);
+        tableMetaList.forEach(t->{
+            t.setState(SyncState.STOPPED);
+            t.setErrorReason(Throwables.getStackTraceAsString(e));
+        });
+
         KafkaMessageListenerContainer container = KafkaConfig
-                .getKafkaListener(tableMeta.getSourceDbId(), tableMeta.getTopicGroup(), tableMeta.getTopicName());
-        if (container.isRunning()) {
+                .getKafkaListener(sourceDbId, topicGroup, topicName);
+        if (Objects.nonNull(container) && container.isRunning()) {
             container.stop();
             log.warn("kafka listener '{}' is stopped!", container.getBeanName());
         }else{

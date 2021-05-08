@@ -8,6 +8,7 @@ import com.jte.sync2any.model.mysql.TableMeta;
 import com.jte.sync2any.util.ColumnUtils;
 import com.jte.sync2any.util.DbUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -55,7 +56,12 @@ public class MysqlLoadServiceImpl extends AbstractLoadService {
     public int operateData(CudRequest request) {
         JdbcTemplate jdbcTemplate = (JdbcTemplate) DbUtils.getTargetDsByDbId(allTargetDatasource, request.getTableMeta().getTargetDbId());
         if (INSERT == request.getDmlType()) {
-            return addData(request, jdbcTemplate);
+            try{
+                return addData(request, jdbcTemplate);
+            }catch (DuplicateKeyException e){
+                log.warn("insert error,found duplicate key,but program will ignore this error.",e);
+            }
+            return 0;
         } else if (UPDATE == request.getDmlType()) {
             return updateData(request, jdbcTemplate);
         } else if (DELETE == request.getDmlType()) {

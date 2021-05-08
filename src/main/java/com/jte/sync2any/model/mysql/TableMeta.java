@@ -16,6 +16,7 @@
 package com.jte.sync2any.model.mysql;
 
 
+import com.jte.sync2any.model.config.SyncConfig;
 import com.jte.sync2any.model.core.SyncState;
 import org.apache.commons.lang3.StringUtils;
 
@@ -28,6 +29,7 @@ import java.util.Map.Entry;
  * @author sharajava
  */
 public class TableMeta {
+    private SyncConfig syncConfig;
     private String tableName;
     /**
      * 同步到目标表的名称
@@ -72,13 +74,9 @@ public class TableMeta {
     private String errorReason;
 
     /**
-     *
-     * 0: waiting to start
-     * 1: sync is stopped
-     * 2: loading origin data
-     * 3: sync is running
+     * 当前同步状态
      */
-    private SyncState state=SyncState.WAITING;
+    private SyncState state=SyncState.INACTIVE;
 
     /**
      * key: column name
@@ -337,5 +335,13 @@ public class TableMeta {
 
     public void setLastOffset(long lastOffset) {
         this.lastOffset = lastOffset;
+    }
+
+    public SyncConfig getSyncConfig() {
+        return syncConfig;
+    }
+
+    public void setSyncConfig(SyncConfig syncConfig) {
+        this.syncConfig = syncConfig;
     }
 }

@@ -33,7 +33,8 @@
     .table {
         margin-top: 50px;
     }
-    .content{
+
+    .content {
         width: 1500px;
         margin: 0 auto;
     }
@@ -45,31 +46,35 @@
         <p class="lead">状态面板，所有同步任务都会在此列出。如果同步过程中有任何异常，应该先到此处进行排查。</p>
         <table class="table">
             <thead>
-                <tr>
-                    <th scope="col">#</th>
-                    <th scope="col">db name</th>
-                    <th scope="col">table name</th>
-                    <th scope="col">target indexTable</th>
-                    <th scope="col">topic</th>
-                    <th scope="col">group</th>
-                    <th scope="col">offset</th>
-                    <th scope="col">
-                        <div data-toggle="tooltip" title="最近一次同步时间">last update time
-                            <i class="fa fa-info-circle" aria-hidden="true"></i>
-                        </div>
-                    </th>
-                    <th scope="col">
-                        <div data-toggle="tooltip" title="与数据源的延迟时间">delay(s)
-                            <i class="fa fa-info-circle" aria-hidden="true"></i>
-                        </div>
-                    </th>
-                    <th scope="col">
-                        <div data-toggle="tooltip" title="处理一个Msg所花费的时间">tpq(ms)
-                            <i class="fa fa-info-circle" aria-hidden="true"></i>
-                        </div>
-                    </th>
-                    <th scope="col">state</th>
-                </tr>
+            <tr>
+                <th scope="col">#</th>
+                <th scope="col">db name</th>
+                <th scope="col">table name</th>
+                <th scope="col">target indexTable</th>
+                <th scope="col">topic</th>
+                <th scope="col">group</th>
+                <th scope="col">
+                    <div data-toggle="tooltip" title="最近一个有效消息的位置">offset
+                        <i class="fa fa-info-circle" aria-hidden="true"></i>
+                    </div>
+                </th>
+                <th scope="col">
+                    <div data-toggle="tooltip" title="最近一次同步时间">last update time
+                        <i class="fa fa-info-circle" aria-hidden="true"></i>
+                    </div>
+                </th>
+                <th scope="col">
+                    <div data-toggle="tooltip" title="与数据源的延迟时间">delay(s)
+                        <i class="fa fa-info-circle" aria-hidden="true"></i>
+                    </div>
+                </th>
+                <th scope="col">
+                    <div data-toggle="tooltip" title="处理一个Msg所花费的时间">tpq(ms)
+                        <i class="fa fa-info-circle" aria-hidden="true"></i>
+                    </div>
+                </th>
+                <th scope="col">state</th>
+            </tr>
             </thead>
             <tbody>
             <#list data as d>
@@ -100,7 +105,8 @@
     </footer>
 
     <!-- Modal -->
-    <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalScrollableTitle" aria-hidden="true">
+    <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalScrollableTitle"
+         aria-hidden="true">
         <div class="modal-dialog modal-dialog-scrollable modal-xl" role="document">
             <div class="modal-content">
                 <div class="modal-header">
@@ -120,8 +126,7 @@
     </div>
 
     <script>
-        function showError(msg)
-        {
+        function showError(msg) {
             $("#errorContent").html(msg);
             $('#myModal').modal('show')
         }

@@ -51,6 +51,18 @@ public class RuleConfigParser {
         return RULES_MAP.getIfPresent(sourceDbId+"$"+tableName);
     }
 
+    public static List<TableMeta> getTableMetaListByMq(String topicName,String topicGroup){
+        List<TableMeta> tableMetaList = new ArrayList<>();
+        Set<String> keySet =RULES_MAP.asMap().keySet();
+        for(String key:keySet){
+            TableMeta tableMeta = RULES_MAP.getIfPresent(key);
+            if(tableMeta.getTopicName().equals(topicName) && tableMeta.getTopicGroup().equals(topicGroup)){
+                tableMetaList.add(tableMeta);
+            }
+        }
+        return tableMetaList;
+    }
+
     public void initRules() {
         this.checkConfig();
 
@@ -87,6 +99,7 @@ public class RuleConfigParser {
                     tableMeta.setTopicGroup(config.getMq().getTopicGroup());
                     tableMeta.setSourceDbId(config.getSourceDbId());
                     tableMeta.setTargetDbId(config.getTargetDbId());
+                    tableMeta.setSyncConfig(config);
 
                     //填充匹配规则
                     parseColumnMeta(config.getTargetType(),tableMeta,rule);

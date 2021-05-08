@@ -144,7 +144,7 @@ public class KafkaConfig {
                 })
                 .filter(key -> {
                     TableMeta meta = tableRules.get(key);
-                    return !SyncState.SYNCING.equals(meta.getState());
+                    return SyncState.INACTIVE.equals(meta.getState()) || SyncState.LOADING_ORIGIN_DATA.equals(meta.getState());
                 }).count();
         //一旦还有未准备好的table，就不能去同步
         return notReadyCont == 0;
