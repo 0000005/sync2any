@@ -34,8 +34,6 @@ public abstract class DynamicDataAssign {
      * @return
      */
     public static String getDynamicTableName(TableRecords records,TableMeta tableMeta){
-        System.out.println(tableMeta.getDynamicTablenameAssigner());
-        System.out.println(tableMeta.getShardingKey());
         if(StringUtils.isNotBlank(tableMeta.getDynamicTablenameAssigner())){
             Object shardingValue = getShardingValue(records,tableMeta.getShardingKey());
             return getDynamicTableName(shardingValue,tableMeta);

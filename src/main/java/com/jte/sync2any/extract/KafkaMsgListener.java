@@ -158,7 +158,7 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String, by
                         }
                     }
                 }
-                updateStatics(tableMeta, header.getTimestamp(), startTime,data.offset());
+                updateStatics(tableMeta, header.getTimestamp(), startTime, data.offset());
             }
         } catch (Exception e) {
             //触发告警
@@ -175,64 +175,60 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String, by
      * @return
      * @throws IOException
      */
-    public SubscribeDataProto.Entries parseFromMq(ConsumerRecord<String, byte[]> data) {
+    public SubscribeDataProto.Entries parseFromMq(ConsumerRecord<String, byte[]> data) throws Exception {
 
         SubscribeDataProto.Entries entries = null;
-        try {
-            //kafka 分区号
-            long partitionId = data.partition();
-            //消息序号
-            long partitionSeq = getPartitionSeq(data);
-            //数据库分片id
-            String shardId = getShardId(data);
+        //kafka 分区号
+        long partitionId = data.partition();
+        //消息序号
+        long partitionSeq = getPartitionSeq(data);
+        //数据库分片id
+        String shardId = getShardId(data);
 
-            String positionKey = shardId + "$" + partitionId;
-            Long shardLastSeq = lastSeqMap.get(positionKey);
+        Long shardLastSeq = lastSeqMap.get(shardId);
 
-            //初始化消息序号
-            if (shardLastSeq == null || partitionSeq == 1) {
-                lastSeqMap.put(positionKey, (long) 1);
-            } else if (partitionSeq <= shardLastSeq) {
-                log.warn("重复的消息: " + data);
-                return null;
-            } else if (partitionSeq != shardLastSeq + 1 && shardLastSeq != 0) {
-                throw new IllegalStateException("消息序号不连续, last: " + shardLastSeq + ", current: " + partitionSeq);
-            }
-            //缓存最新的消息序号
-            lastSeqMap.put(positionKey, partitionSeq);
+        //初始化消息序号
+        if (shardLastSeq == null || partitionSeq == 1) {
+            lastSeqMap.put(shardId, (long) 1);
+        } else if (partitionSeq <= shardLastSeq) {
+            log.warn("重复的消息: " + data);
+            return null;
+        } else if (partitionSeq != shardLastSeq + 1 && shardLastSeq != 0) {
+            throw new IllegalStateException("消息序号不连续, last: " + shardLastSeq + ", current: " + partitionSeq);
+        }
+        //缓存最新的消息序号
+        lastSeqMap.put(shardId, partitionSeq);
 
-            SubscribeDataProto.Envelope envelope = SubscribeDataProto.Envelope.parseFrom(data.value());
-            if (1 != envelope.getVersion()) {
-                throw new IllegalStateException(String.format("unsupported version: %d", envelope.getVersion()));
-            }
-            ByteArrayOutputStream completeMsg = new ByteArrayOutputStream();
-            if (1 == envelope.getTotal()) {
-                completeMsg = new ByteArrayOutputStream();
-                envelope.getData().writeTo(completeMsg);
+        SubscribeDataProto.Envelope envelope = SubscribeDataProto.Envelope.parseFrom(data.value());
+        if (1 != envelope.getVersion()) {
+            throw new IllegalStateException(String.format("unsupported version: %d", envelope.getVersion()));
+        }
+        ByteArrayOutputStream completeMsg = new ByteArrayOutputStream();
+        if (1 == envelope.getTotal()) {
+            completeMsg = new ByteArrayOutputStream();
+            envelope.getData().writeTo(completeMsg);
+        } else {
+            ByteArrayOutputStream shardMsg = shardMsgMap.get(shardId);
+            if (null == shardMsg) {
+                shardMsg = new ByteArrayOutputStream();
+                envelope.getData().writeTo(shardMsg);
+                shardMsgMap.put(shardId, shardMsg);
             } else {
-                ByteArrayOutputStream shardMsg = shardMsgMap.get(positionKey);
-                if (null == shardMsg) {
-                    shardMsg = new ByteArrayOutputStream();
-                    envelope.getData().writeTo(shardMsg);
-                    shardMsgMap.put(positionKey, shardMsg);
-                } else {
-                    envelope.getData().writeTo(shardMsg);
-                }
+                envelope.getData().writeTo(shardMsg);
             }
+        }
 
-            if (envelope.getIndex() < envelope.getTotal() - 1) {
-                log.warn("本次接受到的数据包不完整，继续拼装数据。index:{} , total:{}", envelope.getIndex(), envelope.getTotal());
-                return null;
-            }
+        if (envelope.getIndex() < envelope.getTotal() - 1) {
+            log.warn("本次接受到的数据包不完整，继续拼装数据。index:{} , total:{} , shardId:{} , shardMsgExits:{}", envelope.getIndex(), envelope.getTotal() ,shardId , shardMsgMap.get(shardId)==null);
+            return null;
+        }
 
-            if (1 == envelope.getTotal()) {
-                entries = SubscribeDataProto.Entries.parseFrom(completeMsg.toByteArray());
-            } else {
-                entries = SubscribeDataProto.Entries.parseFrom(shardMsgMap.get(shardId).toByteArray());
-            }
-        } catch (Exception e) {
-            //TODO 触发告警
-            log.error("解析mq消息失败，topic:{},offset:{},partition:{}", data.topic(), data.offset(), data.partition(), e);
+        if (1 == envelope.getTotal()) {
+            entries = SubscribeDataProto.Entries.parseFrom(completeMsg.toByteArray());
+        } else {
+            log.warn("多个数据包合并解析。index:{} , total:{} , shardId:{} , shardMsgExits:{}", envelope.getIndex(), envelope.getTotal() ,shardId , Objects.nonNull(shardMsgMap.get(shardId))?"true":"false");
+            entries = SubscribeDataProto.Entries.parseFrom(shardMsgMap.get(shardId).toByteArray());
+            shardMsgMap.remove(shardId);
         }
 
         return entries;
@@ -245,7 +241,7 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String, by
      * @param time
      * @param startTime
      */
-    private void updateStatics(TableMeta tableMeta, int time, long startTime,long offset) {
+    private void updateStatics(TableMeta tableMeta, int time, long startTime, long offset) {
         long dataUpdateTime = new BigDecimal(time).multiply(new BigDecimal(1000)).longValue();
         tableMeta.setLastDataManipulateTime(dataUpdateTime);
         long endTime = System.currentTimeMillis();
@@ -281,11 +277,11 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String, by
     }
 
 
-    public static KafkaMessageListenerContainer stopListener(String topicName, String topicGroup , String sourceDbId, Exception e) {
+    public static KafkaMessageListenerContainer stopListener(String topicName, String topicGroup, String sourceDbId, Exception e) {
 
         //找到这个topicName 和 topicGroup对应的所有table,设置为停止
-        List<TableMeta> tableMetaList = RuleConfigParser.getTableMetaListByMq(topicName,topicGroup);
-        tableMetaList.forEach(t->{
+        List<TableMeta> tableMetaList = RuleConfigParser.getTableMetaListByMq(topicName, topicGroup);
+        tableMetaList.forEach(t -> {
             t.setState(SyncState.STOPPED);
             t.setErrorReason(Throwables.getStackTraceAsString(e));
         });
@@ -295,7 +291,7 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String, by
         if (Objects.nonNull(container) && container.isRunning()) {
             container.stop();
             log.warn("kafka listener '{}' is stopped!", container.getBeanName());
-        }else{
+        } else {
             log.warn("kafka listener '{}' is not running, skip stop action!", container.getBeanName());
         }
         return container;

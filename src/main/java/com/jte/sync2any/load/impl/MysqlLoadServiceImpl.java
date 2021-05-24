@@ -59,7 +59,7 @@ public class MysqlLoadServiceImpl extends AbstractLoadService {
             try{
                 return addData(request, jdbcTemplate);
             }catch (DuplicateKeyException e){
-                log.warn("insert error,found duplicate key,but program will ignore this error.",e);
+                log.warn("insert fail,because found duplicate key,but program will ignore it. table:{} ; pk:{}",request.getTable() , request.getPkValueMap());
             }
             return 0;
         } else if (UPDATE == request.getDmlType()) {
