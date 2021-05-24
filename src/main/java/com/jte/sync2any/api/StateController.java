@@ -88,7 +88,7 @@ public class StateController {
         KAFKA_SET.remove(container);
 
         //启动新的消费者
-        container = kafkaConfig.createContainer(mq, offset);
+        container = kafkaConfig.createContainer(mq, offset, sourceDbId);
         if(KafkaConfig.canStartListener(container,mq.getTopicGroup(),mq.getTopicName())){
             log.info("kafka({}) start listening!",container.getBeanName());
             container.start();

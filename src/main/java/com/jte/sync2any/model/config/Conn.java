@@ -6,6 +6,7 @@ import lombok.Data;
 public class Conn {
     public static String DB_TYPE_ES="es";
     public static String DB_TYPE_MYSQL="mysql";
+    public static String DB_TYPE_CLICKHOUSE="clickhouse";
     /**
      * 默认mysql
      */

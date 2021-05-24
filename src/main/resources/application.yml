@@ -16,4 +16,4 @@ management:
 logging:
   level:
     root: info
-    com.jte: debug
+    com.jte: info

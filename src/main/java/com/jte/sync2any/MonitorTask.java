@@ -46,10 +46,10 @@ public class MonitorTask implements Runnable {
     public void run() {
         log.debug("run monitor...");
         //检测kafka同步过程中是否出错
-        //计时累计
+        //计时累计每errorTopicAlertTimeGap秒检测一次
         currentErrorTopicAlertTimeGap = currentErrorTopicAlertTimeGap + LOOP_WAITING_TIME;
         if (currentErrorTopicAlertTimeGap > errorTopicAlertTimeGap) {
-            if (ERROR_TOPIC_LIST.isEmpty()) {
+            if (!ERROR_TOPIC_LIST.isEmpty()) {
                 AlertUtils.sendAlert(sync2any.getAlert().getSecret(), "发现有消息同步失败:" + ERROR_TOPIC_LIST.toString());
                 ERROR_TOPIC_LIST.clear();
             }
@@ -134,6 +134,7 @@ public class MonitorTask implements Runnable {
             String topicName = key.split(",")[1];
             List<TableMeta> tableMetaList = RuleConfigParser.getTableMetaListByMq(topicName,topicGroup);
             int delayCount = 0;
+            //检查这个mq下面每一个表的延迟情况
             for(TableMeta tm : tableMetaList){
                 int maxDelayInSecond = tm.getSyncConfig().getMaxDelayInSecond();
                 //同步延迟
@@ -142,10 +143,11 @@ public class MonitorTask implements Runnable {
                     delayCount ++;
                     break;
                 }
-                if(delayCount == 0){
-                    it.remove();
-                    AlertUtils.sendAlert(sync2any.getAlert().getSecret(), "数据同步延迟已经恢复。队列："+topicName+"，消费组："+topicGroup);
-                }
+            }
+            //如果每一个表都没问题，那么则认为已经恢复
+            if(delayCount == 0){
+                it.remove();
+                AlertUtils.sendAlert(sync2any.getAlert().getSecret(), "数据同步延迟已经恢复。队列："+topicName+"，消费组："+topicGroup);
             }
         }
     }

@@ -90,16 +90,18 @@ public class RuleConfigParser {
                         continue;
                     }
                     //该表还未解析规则，寻找规则
-                    List<Rule> ruleList= Optional.ofNullable(config.getRules()).orElse(Collections.emptyList());
-                    Rule rule=ruleList.stream()
-                            .filter(tr -> Pattern.matches(tr.getTable(),realTableName))
-                            .findFirst().orElse(null);
+
                     tableMeta = sourceMetaExtract.getTableMate(config.getSourceDbId(),realTableName);
                     tableMeta.setTopicName(config.getMq().getTopicName());
                     tableMeta.setTopicGroup(config.getMq().getTopicGroup());
                     tableMeta.setSourceDbId(config.getSourceDbId());
                     tableMeta.setTargetDbId(config.getTargetDbId());
                     tableMeta.setSyncConfig(config);
+
+                    List<Rule> ruleList= Optional.ofNullable(config.getRules()).orElse(Collections.emptyList());
+                    Rule rule=ruleList.stream()
+                            .filter(tr -> Pattern.matches(tr.getTable(),realTableName))
+                            .findFirst().orElse(null);
 
                     //填充匹配规则
                     parseColumnMeta(config.getTargetType(),tableMeta,rule);

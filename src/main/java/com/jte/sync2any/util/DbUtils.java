@@ -1,5 +1,6 @@
 package com.jte.sync2any.util;
 
+import com.alibaba.druid.pool.DruidDataSource;
 import com.jte.sync2any.core.Constants;
 import com.jte.sync2any.exception.ShouldNeverHappenException;
 import com.jte.sync2any.model.config.Conn;
@@ -16,6 +17,7 @@ import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import javax.sql.DataSource;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.List;
@@ -95,6 +97,18 @@ public class DbUtils {
             log.error("获取数据库名失败,url:{}",conn.getUrl(),e);
         }
         return new JdbcTemplate(mysqlDs);
+    }
+
+    public static DataSource getCkDatasource(Conn conn){
+        DruidDataSource datasource = new DruidDataSource();
+        datasource.setUrl(conn.getUrl());
+        datasource.setDriverClassName("ru.yandex.clickhouse.ClickHouseDriver");
+        datasource.setInitialSize(3);
+        datasource.setMinIdle(3);
+        datasource.setMaxActive(20);
+        datasource.setMaxWait(2000);
+        datasource.setPassword(conn.getPassword());
+        return datasource;
     }
 
 

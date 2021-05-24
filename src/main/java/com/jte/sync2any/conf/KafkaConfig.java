@@ -45,18 +45,17 @@ public class KafkaConfig {
             System.exit(500);
         }
         sync2any.getSyncConfigList().forEach(sdb -> {
-            KafkaMessageListenerContainer<String, byte[]> container = createContainer(sdb.getMq());
-            container.setBeanName(sdb.getSourceDbId().toLowerCase() + "_" + sdb.getMq().getTopicGroup() + "_" + sdb.getMq().getTopicName());
+            KafkaMessageListenerContainer<String, byte[]> container = createContainer(sdb.getMq(),sdb.getSourceDbId());
             KAFKA_SET.add(container);
         });
     }
 
 
-    private KafkaMessageListenerContainer<String, byte[]> createContainer(Mq mq) {
-        return createContainer(mq, null);
+    private KafkaMessageListenerContainer<String, byte[]> createContainer(Mq mq,String sourceDbId) {
+        return createContainer(mq, null,sourceDbId);
     }
 
-    public KafkaMessageListenerContainer<String, byte[]> createContainer(Mq mq, Long offset) {
+    public KafkaMessageListenerContainer<String, byte[]> createContainer(Mq mq, Long offset,String sourceDbId) {
 
         ContainerProperties containerProps = null;
         if (Objects.isNull(offset)) {
@@ -78,6 +77,8 @@ public class KafkaConfig {
         KafkaMessageListenerContainer<String, byte[]> container = new KafkaMessageListenerContainer<>(cf, containerProps);
 
         container.setAutoStartup(false);
+
+        container.setBeanName(sourceDbId + "_" + mq.getTopicGroup() + "_" + mq.getTopicName());
         return container;
     }
 
