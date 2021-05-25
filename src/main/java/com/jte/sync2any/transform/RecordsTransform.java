@@ -93,7 +93,7 @@ public abstract class RecordsTransform {
             rows = records.pkRows(records.getNewRows());
         }
         if (rows.isEmpty()) {
-            throw new ShouldNeverHappenException("can't determine docId!");
+            throw new ShouldNeverHappenException("row is empty");
         }
 
         //目前只考虑1行的情况

@@ -15,6 +15,7 @@ import com.jte.sync2any.model.es.EsDateType;
 import com.jte.sync2any.model.mysql.ColumnMeta;
 import com.jte.sync2any.model.mysql.TableMeta;
 import com.jte.sync2any.util.ColumnUtils;
+import com.jte.sync2any.util.DbUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.context.annotation.Configuration;
@@ -50,6 +51,8 @@ public class RuleConfigParser {
     private Sync2any sync2any;
     @Resource
     private SourceMysqlDb sourceMysqlDb;
+    @Resource
+    private TargetDatasources targetDatasources;
 
     public static TableMeta getTableMeta(String sourceDbId,String tableName){
         return RULES_MAP.getIfPresent(sourceDbId+"$"+tableName);
@@ -77,7 +80,9 @@ public class RuleConfigParser {
         for(int r=0;r<sync2any.getSyncConfigList().size();r++)
         {
             SyncConfig config = syncConfigList.get(r);
-            log.info("sync config:{}",config);
+            log.info("sync config:{}",config.toString());
+            Conn conn = DbUtils.getConnByDbId(targetDatasources.getDatasources(),config.getTargetDbId());
+            config.setTargetConn(conn);
             //获取所有的表名
             List<String> tableNameList= sourceMetaExtract.getAllTableName(config.getSourceDbId());
             //查看表名是否匹配
@@ -168,7 +173,7 @@ public class RuleConfigParser {
                 .findFirst().orElse(null);
 
         //填充匹配规则
-        parseColumnMeta(config.getTargetType(),tableMeta,rule);
+        parseColumnMeta(config.getTargetConn().getType(),tableMeta,rule);
         RULES_MAP.put(key,tableMeta);
         return tableMeta;
     }
@@ -194,11 +199,6 @@ public class RuleConfigParser {
         }
         Set<String> topicNameSet = new HashSet<>();
         sync2any.getSyncConfigList().forEach(s->{
-            if(StringUtils.isBlank(s.getTargetType()))
-            {
-                log.error("请填写target-type配置项,可选的值有[es,mysql]！");
-                System.exit(500);
-            }
             if(StringUtils.isBlank(s.getSourceDbId()))
             {
                 log.error("请填写sync-config-list下的db-name配置项！");
@@ -296,7 +296,7 @@ public class RuleConfigParser {
     private TableMeta parseColumnMeta(String targetType, TableMeta tableMeta, Rule rule){
         if(Objects.isNull(rule))
         {
-            if(Conn.DB_TYPE_MYSQL.equals(targetType)){
+            if(Conn.DB_TYPE_MYSQL.equals(targetType)||Conn.DB_TYPE_CLICKHOUSE.equals(targetType)){
                 tableMeta.setTargetTableName(tableMeta.getTableName().toLowerCase());
             }else{
                 tableMeta.setTargetTableName(tableMeta.getDbName().toLowerCase()+"-"+tableMeta.getTableName().toLowerCase());

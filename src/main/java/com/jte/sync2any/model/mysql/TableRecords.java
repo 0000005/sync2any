@@ -55,11 +55,6 @@ public class TableRecords {
      */
     private List<Row> newRows = new ArrayList<>();
 
-    /**
-     * 提取origin data里面的值
-     */
-    private List<Row> originRows = new ArrayList<>();
-
 
     /**
      * Gets table name.
@@ -103,14 +98,6 @@ public class TableRecords {
 
     public void setNewRows(List<Row> newRows) {
         this.newRows = newRows;
-    }
-
-    public List<Row> getOriginRows() {
-        return originRows;
-    }
-
-    public void setOriginRows(List<Row> originRows) {
-        this.originRows = originRows;
     }
 
     /**

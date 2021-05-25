@@ -157,14 +157,14 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String, by
                 //将mq的信息转为mysql形式，且已经进行了规则的处理
                 TableRecords tableRecords = TableRecords.buildRecords(tableMeta, row, dmlEvt);
                 //将tableRecords 转化为可操作的形式
-                AbstractLoadService loadService = AbstractLoadService.getLoadService(syncConfig.getTargetType());
+                AbstractLoadService loadService = AbstractLoadService.getLoadService(syncConfig.getTargetConn().getType());
                 CudRequest request = transform.transform(tableRecords);
 
                 if (Objects.isNull(request)) {
                     log.error("CudRequest 为null,mq:{}", data.value());
                 }
 
-                //将信息同步到目标数据库中中，如果失败，则重试3次
+                //将信息同步到目标数据库中，如果失败，则重试3次
                 for (int i = 1; i <= MAX_RETRY_TIMES && !Objects.isNull(request); i++) {
                     try {
                         int effectNum = loadService.operateData(request);

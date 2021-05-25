@@ -36,6 +36,10 @@ public abstract class AbstractLoadService {
             {
                 loadService = (AbstractLoadService) SpringContextUtils.getContext().getBean("mysqlLoadServiceImpl");
             }
+            else if(Conn.DB_TYPE_CLICKHOUSE.equals(key))
+            {
+                loadService = (AbstractLoadService) SpringContextUtils.getContext().getBean("ckLoadServiceImpl");
+            }
             else
             {
                 throw new IllegalArgumentException("同步过程中发现错误的目标类型（targetType）:{"+key+"}，请检查配置文件！");

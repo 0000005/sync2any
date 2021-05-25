@@ -14,6 +14,7 @@ public class RecordsTransformImpl extends RecordsTransform {
     @Override
     public CudRequest transform(TableRecords records){
         CudRequest cudRequest = new CudRequest();
+        cudRequest.setRecords(records);
         cudRequest.setPkValueStr(getPkValueStr(records));
         cudRequest.setPkValueMap(getPkValueMap(records));
         cudRequest.setDmlType(records.getDmlEvt().getDmlEventType());

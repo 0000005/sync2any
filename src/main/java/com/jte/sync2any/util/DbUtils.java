@@ -99,6 +99,11 @@ public class DbUtils {
         return new JdbcTemplate(mysqlDs);
     }
 
+    /**
+     * 需要使用原生的jdbc，这样的效率最高
+     * @param conn
+     * @return
+     */
     public static DataSource getCkDatasource(Conn conn){
         DruidDataSource datasource = new DruidDataSource();
         datasource.setUrl(conn.getUrl());
@@ -108,6 +113,7 @@ public class DbUtils {
         datasource.setMaxActive(20);
         datasource.setMaxWait(2000);
         datasource.setPassword(conn.getPassword());
+
         return datasource;
     }
 

@@ -13,8 +13,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import static com.jte.sync2any.model.config.Conn.DB_TYPE_ES;
-import static com.jte.sync2any.model.config.Conn.DB_TYPE_MYSQL;
+import static com.jte.sync2any.model.config.Conn.*;
 
 /**
  * 初始化同步目标数据源
@@ -53,6 +52,10 @@ public class TargetDatasourcesConfig {
                 targetDsMap.put(conn.getDbId(), DbUtils.getEsDatasource(conn));
             }
             else if(DB_TYPE_MYSQL.equals(conn.getType()))
+            {
+                targetDsMap.put(conn.getDbId(),DbUtils.getMysqlDatasource(conn));
+            }
+            else if(DB_TYPE_CLICKHOUSE.equals(conn.getType()))
             {
                 targetDsMap.put(conn.getDbId(),DbUtils.getMysqlDatasource(conn));
             }
