@@ -1,18 +1,20 @@
 package com.jte.sync2any.conf;
 
+import com.alibaba.druid.sql.SQLUtils;
+import com.alibaba.druid.sql.ast.SQLStatement;
+import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlCreateTableStatement;
+import com.alibaba.druid.util.JdbcConstants;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.jte.sync2any.exception.ShouldNeverHappenException;
 import com.jte.sync2any.extract.SourceMetaExtract;
-import com.jte.sync2any.model.config.Conn;
-import com.jte.sync2any.model.config.Rule;
-import com.jte.sync2any.model.config.Sync2any;
-import com.jte.sync2any.model.config.SyncConfig;
+import com.jte.sync2any.model.config.*;
 import com.jte.sync2any.model.es.EsDateType;
 import com.jte.sync2any.model.mysql.ColumnMeta;
 import com.jte.sync2any.model.mysql.TableMeta;
+import com.jte.sync2any.util.ColumnUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.context.annotation.Configuration;
@@ -46,6 +48,8 @@ public class RuleConfigParser {
     private SourceMetaExtract sourceMetaExtract;
     @Resource
     private Sync2any sync2any;
+    @Resource
+    private SourceMysqlDb sourceMysqlDb;
 
     public static TableMeta getTableMeta(String sourceDbId,String tableName){
         return RULES_MAP.getIfPresent(sourceDbId+"$"+tableName);
@@ -63,13 +67,17 @@ public class RuleConfigParser {
         return tableMetaList;
     }
 
-    public void initRules() {
+    /**
+     * 加载配置文件进行初始化
+     */
+    public void initAllRules() {
         this.checkConfig();
 
         List<SyncConfig> syncConfigList = sync2any.getSyncConfigList();
         for(int r=0;r<sync2any.getSyncConfigList().size();r++)
         {
             SyncConfig config = syncConfigList.get(r);
+            log.info("sync config:{}",config);
             //获取所有的表名
             List<String> tableNameList= sourceMetaExtract.getAllTableName(config.getSourceDbId());
             //查看表名是否匹配
@@ -82,34 +90,95 @@ public class RuleConfigParser {
                 //接下来解析rule
                 for(String realTableName:matchTableName)
                 {
-                    String key=config.getSourceDbId()+"$"+realTableName;
-                    //寻找到了匹配的表
-                    TableMeta tableMeta=RULES_MAP.getIfPresent(key);
-                    if(Objects.nonNull(tableMeta) )
-                    {
-                        continue;
-                    }
-                    //该表还未解析规则，寻找规则
-
-                    tableMeta = sourceMetaExtract.getTableMate(config.getSourceDbId(),realTableName);
-                    tableMeta.setTopicName(config.getMq().getTopicName());
-                    tableMeta.setTopicGroup(config.getMq().getTopicGroup());
-                    tableMeta.setSourceDbId(config.getSourceDbId());
-                    tableMeta.setTargetDbId(config.getTargetDbId());
-                    tableMeta.setSyncConfig(config);
-
-                    List<Rule> ruleList= Optional.ofNullable(config.getRules()).orElse(Collections.emptyList());
-                    Rule rule=ruleList.stream()
-                            .filter(tr -> Pattern.matches(tr.getTable(),realTableName))
-                            .findFirst().orElse(null);
-
-                    //填充匹配规则
-                    parseColumnMeta(config.getTargetType(),tableMeta,rule);
-                    RULES_MAP.put(key,tableMeta);
+                    initRuleByTableName(config,realTableName);
                 }
             }
         }
+    }
 
+    /**
+     * 根据指定的SyncConfig 和 tableName 进行初始化配置
+     * @param syncConfigList
+     * @param tableName
+     */
+    public List<TableMeta> initRules(List<SyncConfig> syncConfigList , String tableName){
+        List<TableMeta> tableMetaList = new ArrayList<>();
+        for(int r=0;r<syncConfigList.size();r++)
+        {
+            SyncConfig config = syncConfigList.get(r);
+            //查看表名是否匹配
+            String [] syncTableArray =config.getSyncTables().split(",");
+            for(String syncTableName :syncTableArray)
+            {
+                boolean isMatch = Pattern.matches(syncTableName, tableName);
+                log.info("initRules.... syncTableName:{} , tableName:{} , isMatch:{}",syncTableName,tableName,isMatch);
+                if(isMatch){
+                    TableMeta tableMeta = initRuleByTableName(config,tableName);
+                    if(Objects.nonNull(tableMeta)){
+                        tableMetaList.add(tableMeta);
+                    }
+                }
+            }
+        }
+        return tableMetaList;
+    }
+
+
+    /**
+     * 根据源数据库id来匹配 相关的 sync-config-list
+     * @param sourceDbName
+     * @return
+     */
+    public List<SyncConfig> getSysConfigBySourceDbName(String sourceDbName){
+        String dbId = sourceMysqlDb.getDatasources().stream().filter(c->c.getDbName().equalsIgnoreCase(sourceDbName)).map(e->e.getDbId()).findFirst().orElse(null);
+        if(StringUtils.isBlank(dbId)){
+            return null;
+        }
+        return sync2any.getSyncConfigList()
+                .stream()
+                .filter(e->e.getSourceDbId().equals(dbId))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 根据表名来初始化
+     * @param config
+     * @param realTableName
+     */
+    public TableMeta initRuleByTableName(SyncConfig config,String realTableName){
+        String key=config.getSourceDbId()+"$"+realTableName;
+        //寻找到了匹配的表
+        TableMeta tableMeta=RULES_MAP.getIfPresent(key);
+        if(Objects.nonNull(tableMeta) )
+        {
+            log.warn("During initRule RULES_MAP already contains table:{}",realTableName);
+            return null;
+        }
+        //该表还未解析规则，寻找规则
+        tableMeta = sourceMetaExtract.getTableMate(config.getSourceDbId(),realTableName);
+        tableMeta.setTopicName(config.getMq().getTopicName());
+        tableMeta.setTopicGroup(config.getMq().getTopicGroup());
+        tableMeta.setSourceDbId(config.getSourceDbId());
+        tableMeta.setTargetDbId(config.getTargetDbId());
+        tableMeta.setSyncConfig(config);
+
+        List<Rule> ruleList= Optional.ofNullable(config.getRules()).orElse(Collections.emptyList());
+        Rule rule=ruleList.stream()
+                .filter(tr -> Pattern.matches(tr.getTable(),realTableName))
+                .findFirst().orElse(null);
+
+        //填充匹配规则
+        parseColumnMeta(config.getTargetType(),tableMeta,rule);
+        RULES_MAP.put(key,tableMeta);
+        return tableMeta;
+    }
+
+
+    public static String getTableNameFromDdl(String ddlSql){
+        final String dbType = JdbcConstants.MYSQL;
+        List<SQLStatement> stmtList = SQLUtils.parseStatements(ddlSql, dbType);
+        MySqlCreateTableStatement stmt = (MySqlCreateTableStatement) stmtList.get(0);
+        return ColumnUtils.delEscape(stmt.getTableSource().getName().getSimpleName());
     }
 
     private void checkConfig()

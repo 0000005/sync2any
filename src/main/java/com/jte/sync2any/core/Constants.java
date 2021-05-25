@@ -6,4 +6,5 @@ package com.jte.sync2any.core;
  */
 public interface Constants {
     String JDBC_CLASS_NAME="com.mysql.cj.jdbc.Driver";
+    String YES="1";
 }

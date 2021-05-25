@@ -14,7 +14,7 @@ public class RuleConfigParserTest extends Tester {
 
     @Test
     public void initRulesTest() throws JsonProcessingException {
-        ruleParser.initRules();
+        ruleParser.initAllRules();
 
         String mapAsJson = new ObjectMapper().writeValueAsString(RuleConfigParser.RULES_MAP.asMap());
         System.out.println(mapAsJson);

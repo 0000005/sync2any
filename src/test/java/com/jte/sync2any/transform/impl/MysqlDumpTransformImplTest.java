@@ -34,6 +34,6 @@ public class MysqlDumpTransformImplTest  extends Tester {
     @Before
     public void initRules()
     {
-        ruleParser.initRules();
+        ruleParser.initAllRules();
     }
 }

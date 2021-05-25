@@ -1,5 +1,6 @@
 package com.jte.sync2any.model.config;
 
+import com.jte.sync2any.core.Constants;
 import lombok.Data;
 
 import java.util.List;
@@ -30,13 +31,17 @@ public class SyncConfig {
     /**
      * 延迟告警(秒)
      */
-    private int maxDelayInSecond=-1;
+    private int maxDelayInSecond = -1;
     /**
      * 空闲告警(分钟)
      */
-    private int maxIdleInMinute=-1;
+    private int maxIdleInMinute = -1;
     /**
      * 下次告警时间(分钟)
      */
-    private int nextTriggerAlertInMinute=60*24;
+    private int nextTriggerAlertInMinute = 60 * 24;
+    /**
+     * 是否载入原始数据
+     */
+    private String dumpOriginData = Constants.YES;
 }

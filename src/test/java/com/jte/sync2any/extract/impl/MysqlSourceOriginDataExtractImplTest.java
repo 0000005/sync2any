@@ -27,7 +27,7 @@ public class MysqlSourceOriginDataExtractImplTest  extends Tester {
     @Before
     public void initRules()
     {
-        ruleParser.initRules();
+        ruleParser.initAllRules();
     }
 
     @Test

@@ -72,7 +72,7 @@ public class TableRecordsTest extends Tester {
     @Before
     public void initRules()
     {
-        ruleParser.initRules();
+        ruleParser.initAllRules();
     }
 
 }

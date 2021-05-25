@@ -35,6 +35,8 @@ public class KafkaConfig {
     Sync2any sync2any;
     @Resource
     RecordsTransform transform;
+    @Resource
+    RuleConfigParser ruleConfigParser;
 
     public static final Set<KafkaMessageListenerContainer> KAFKA_SET = new HashSet<>();
 
@@ -70,7 +72,7 @@ public class KafkaConfig {
         containerProps.setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
         //异步提交
         containerProps.setSyncCommits(false);
-        containerProps.setMessageListener(new KafkaMsgListener(transform, sync2any));
+        containerProps.setMessageListener(new KafkaMsgListener(transform, sync2any, ruleConfigParser));
 
         Map<String, Object> props = consumerProps(mq);
         DefaultKafkaConsumerFactory<String, byte[]> cf = new DefaultKafkaConsumerFactory<>(props);

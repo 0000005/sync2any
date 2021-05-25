@@ -39,6 +39,7 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String, by
 
     private Sync2any sync2any;
     private RecordsTransform transform;
+    private RuleConfigParser ruleConfigParser;
 
     /**
      * 同一个分区（kafka）的同一个分片(tdsql)中 序号（partitionSeq） 是单调递增且连续的。
@@ -49,9 +50,10 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String, by
 
     private HashMap<String, ByteArrayOutputStream> shardMsgMap = new HashMap<>();
 
-    public KafkaMsgListener(RecordsTransform transform, Sync2any sync2any) {
+    public KafkaMsgListener(RecordsTransform transform, Sync2any sync2any, RuleConfigParser ruleConfigParser) {
         this.transform = transform;
         this.sync2any = sync2any;
+        this.ruleConfigParser = ruleConfigParser;
     }
 
     @Override
@@ -96,7 +98,21 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String, by
 
             SubscribeDataProto.MessageType messageType = entry.getHeader().getMessageType();
             if (!SubscribeDataProto.MessageType.DML.equals(messageType)) {
-                if (SubscribeDataProto.MessageType.BEGIN.equals(messageType) || SubscribeDataProto.MessageType.COMMIT.equals(messageType) || SubscribeDataProto.MessageType.CHECKPOINT.equals(messageType)) {
+                if (SubscribeDataProto.MessageType.DDL.equals(messageType)) {
+                    //发现新表，尝试添加到RULES_MAP中。
+                    SubscribeDataProto.DDLEvent ddlEvent = entry.getEvent().getDdlEvent();
+                    log.warn("new ddl shardId:{} , schema:{} , sql:{} , RULES_MAP size:{}", getShardId(data), ddlEvent.getSchemaName(), ddlEvent.getSql(), RuleConfigParser.RULES_MAP.size());
+                    String newTableName = RuleConfigParser.getTableNameFromDdl(ddlEvent.getSql());
+                    List<SyncConfig> configList = ruleConfigParser.getSysConfigBySourceDbName(ddlEvent.getSchemaName());
+                    if (Objects.nonNull(configList) && configList.size() > 0) {
+                        List<TableMeta> tableMetaList = ruleConfigParser.initRules(configList, newTableName);
+                        tableMetaList.forEach(t->{
+                            t.setState(SyncState.SYNCING);
+                        });
+                    }
+                    log.warn("configListSize:{} , newTableName:{} , RULES_MAP size:{}", configList.size(), newTableName, RuleConfigParser.RULES_MAP.size());
+                    return;
+                } else if (SubscribeDataProto.MessageType.BEGIN.equals(messageType) || SubscribeDataProto.MessageType.COMMIT.equals(messageType) || SubscribeDataProto.MessageType.CHECKPOINT.equals(messageType)) {
                     //不打印begin\commit\checkpoint，日志太多了。
                     return;
                 }
@@ -219,14 +235,14 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String, by
         }
 
         if (envelope.getIndex() < envelope.getTotal() - 1) {
-            log.warn("本次接受到的数据包不完整，继续拼装数据。index:{} , total:{} , shardId:{} , shardMsgExits:{}", envelope.getIndex(), envelope.getTotal() ,shardId , shardMsgMap.get(shardId)==null);
+            log.warn("本次接受到的数据包不完整，继续拼装数据。index:{} , total:{} , shardId:{} , shardMsgExits:{}", envelope.getIndex(), envelope.getTotal(), shardId, shardMsgMap.get(shardId) == null);
             return null;
         }
 
         if (1 == envelope.getTotal()) {
             entries = SubscribeDataProto.Entries.parseFrom(completeMsg.toByteArray());
         } else {
-            log.warn("多个数据包合并解析。index:{} , total:{} , shardId:{} , shardMsgExits:{}", envelope.getIndex(), envelope.getTotal() ,shardId , Objects.nonNull(shardMsgMap.get(shardId))?"true":"false");
+            log.warn("多个数据包合并解析。index:{} , total:{} , shardId:{} , shardMsgExits:{}", envelope.getIndex(), envelope.getTotal(), shardId, Objects.nonNull(shardMsgMap.get(shardId)) ? "true" : "false");
             entries = SubscribeDataProto.Entries.parseFrom(shardMsgMap.get(shardId).toByteArray());
             shardMsgMap.remove(shardId);
         }

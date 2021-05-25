@@ -71,6 +71,6 @@ public class RecordsTransformImplTest extends Tester {
     @Before
     public void initRules()
     {
-        ruleParser.initRules();
+        ruleParser.initAllRules();
     }
 }

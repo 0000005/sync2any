@@ -44,7 +44,7 @@ public class EsLoadServiceImplTest extends Tester {
 
     @Before
     public void init(){
-        ruleParser.initRules();
+        ruleParser.initAllRules();
 
         tableMeta=RuleConfigParser.RULES_MAP.getIfPresent("jte_pms_member$t_pms_member");
 
