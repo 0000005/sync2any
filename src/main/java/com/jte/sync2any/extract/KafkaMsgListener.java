@@ -102,6 +102,10 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String, by
                     //发现新表，尝试添加到RULES_MAP中。
                     SubscribeDataProto.DDLEvent ddlEvent = entry.getEvent().getDdlEvent();
                     log.warn("new ddl shardId:{} , schema:{} , sql:{} , RULES_MAP size:{}", getShardId(data), ddlEvent.getSchemaName(), ddlEvent.getSql(), RuleConfigParser.RULES_MAP.size());
+                    if(!ddlEvent.getSql().startsWith("CREATE TABLE")){
+                        log.info("Ignore unsupported ddl type");
+                        return;
+                    }
                     String newTableName = RuleConfigParser.getTableNameFromDdl(ddlEvent.getSql());
                     List<SyncConfig> configList = ruleConfigParser.getSysConfigBySourceDbName(ddlEvent.getSchemaName());
                     if (Objects.nonNull(configList) && configList.size() > 0) {
