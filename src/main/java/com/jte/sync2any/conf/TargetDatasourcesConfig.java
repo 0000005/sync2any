@@ -57,7 +57,7 @@ public class TargetDatasourcesConfig {
             }
             else if(DB_TYPE_CLICKHOUSE.equals(conn.getType()))
             {
-                targetDsMap.put(conn.getDbId(),DbUtils.getMysqlDatasource(conn));
+                targetDsMap.put(conn.getDbId(),DbUtils.getCkDatasource(conn));
             }
             else
             {

@@ -4,7 +4,7 @@ import com.jte.sync2any.model.mysql.TableMeta;
 
 import java.util.List;
 
-public interface SourceMetaExtract {
+public interface DbMetaExtract {
     TableMeta getTableMate(String dbId,String tableName);
 
     /**
@@ -21,4 +21,13 @@ public interface SourceMetaExtract {
      * @return
      */
     List<String> getAllTableName(String dbId);
+
+
+    /**
+     *  获取该数据库的指定表的引擎
+     * @param dbId
+     * @param tableName
+     * @return
+     */
+    String getTableEngineName(String dbId,String tableName);
 }

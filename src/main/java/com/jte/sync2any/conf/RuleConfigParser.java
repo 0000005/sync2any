@@ -9,7 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.jte.sync2any.exception.ShouldNeverHappenException;
-import com.jte.sync2any.extract.SourceMetaExtract;
+import com.jte.sync2any.extract.impl.MysqlMetaExtractImpl;
 import com.jte.sync2any.model.config.*;
 import com.jte.sync2any.model.es.EsDateType;
 import com.jte.sync2any.model.mysql.ColumnMeta;
@@ -27,6 +27,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
+ * @author JerryYin
  * 规则解析器：
  * 1、哪些表需要被传输
  * 2、表的字段名称和字段类型的映射
@@ -46,7 +47,7 @@ public class RuleConfigParser {
     public static final Cache<String, TableMeta> RULES_MAP = CacheBuilder.newBuilder().build();
 
     @Resource
-    private SourceMetaExtract sourceMetaExtract;
+    private MysqlMetaExtractImpl metaExtract;
     @Resource
     private Sync2any sync2any;
     @Resource
@@ -84,7 +85,7 @@ public class RuleConfigParser {
             Conn conn = DbUtils.getConnByDbId(targetDatasources.getDatasources(),config.getTargetDbId());
             config.setTargetConn(conn);
             //获取所有的表名
-            List<String> tableNameList= sourceMetaExtract.getAllTableName(config.getSourceDbId());
+            List<String> tableNameList= metaExtract.getAllTableName(config.getSourceDbId());
             //查看表名是否匹配
             String [] syncTableArray =config.getSyncTables().split(",");
             for(String syncTableName :syncTableArray)
@@ -160,7 +161,7 @@ public class RuleConfigParser {
             return null;
         }
         //该表还未解析规则，寻找规则
-        tableMeta = sourceMetaExtract.getTableMate(config.getSourceDbId(),realTableName);
+        tableMeta = metaExtract.getTableMate(config.getSourceDbId(),realTableName);
         tableMeta.setTopicName(config.getMq().getTopicName());
         tableMeta.setTopicGroup(config.getMq().getTopicGroup());
         tableMeta.setSourceDbId(config.getSourceDbId());
@@ -231,7 +232,16 @@ public class RuleConfigParser {
         }
     }
 
-    private ColumnMeta mapDataTypeOfEs(ColumnMeta columnMeta){
+    /**
+     * 映射配置es字段的数据类型
+     * @param columnMeta
+     * @param targetType
+     * @return
+     */
+    private ColumnMeta mapDataTypeOfEs(ColumnMeta columnMeta,String targetType){
+        if(!Conn.DB_TYPE_ES.equals(targetType)){
+            return columnMeta;
+        }
         switch (columnMeta.getDataType()) {
             // BOOLEAN -->boolean
             case Types.BOOLEAN:
@@ -307,7 +317,7 @@ public class RuleConfigParser {
                 ColumnMeta columnMeta=tableMeta.getAllColumnMap().get(columnName);
                 //未配置规则，统一化为小写
                 columnMeta.setTargetColumnName(columnName.toLowerCase());
-                mapDataTypeOfEs(columnMeta);
+                mapDataTypeOfEs(columnMeta,targetType);
             }
             return tableMeta;
         }
@@ -363,7 +373,7 @@ public class RuleConfigParser {
                 {
                     //未配置规则，统一化为小写
                     columnMeta.setTargetColumnName(columnName.toLowerCase());
-                    mapDataTypeOfEs(columnMeta);
+                    mapDataTypeOfEs(columnMeta,targetType);
                     continue;
                 }
                 //有具体映射规则
@@ -386,14 +396,14 @@ public class RuleConfigParser {
                     }
                     else
                     {
-                        mapDataTypeOfEs(columnMeta);
+                        mapDataTypeOfEs(columnMeta,targetType);
                     }
                 }
                 else
                 {
                     //仅有名称映射规则
                     columnMeta.setTargetColumnName(mapValue);
-                    mapDataTypeOfEs(columnMeta);
+                    mapDataTypeOfEs(columnMeta,targetType);
                 }
             }
         }
@@ -404,7 +414,7 @@ public class RuleConfigParser {
                 ColumnMeta columnMeta=tableMeta.getAllColumnMap().get(columnName);
                 //未配置规则，统一化为小写
                 columnMeta.setTargetColumnName(columnName.toLowerCase());
-                mapDataTypeOfEs(columnMeta);
+                mapDataTypeOfEs(columnMeta,targetType);
             }
         }
         return tableMeta;

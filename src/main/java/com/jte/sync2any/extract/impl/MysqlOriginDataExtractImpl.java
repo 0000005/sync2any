@@ -1,7 +1,7 @@
 package com.jte.sync2any.extract.impl;
 
 import com.jte.sync2any.exception.ShouldNeverHappenException;
-import com.jte.sync2any.extract.SourceOriginDataExtract;
+import com.jte.sync2any.extract.OriginDataExtract;
 import com.jte.sync2any.model.config.Conn;
 import com.jte.sync2any.model.config.SourceMysqlDb;
 import com.jte.sync2any.model.config.Sync2any;
@@ -28,7 +28,7 @@ import java.util.Objects;
  */
 @Service
 @Slf4j
-public class MysqlSourceOriginDataExtractImpl implements SourceOriginDataExtract {
+public class MysqlOriginDataExtractImpl implements OriginDataExtract {
 
 
     @Autowired

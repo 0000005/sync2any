@@ -112,8 +112,7 @@ sync2any:
           # 【可选，当使用分区计算器时必填】分区健
           sharding_key: group_code
           # 【目标数据库为es时】自定义同步到es的字段名称和字段类型(es的类型)，字段类型请参考类：com.jte.sync2any.model.es.EsDateType
-          # 【目标数据为ck时】可以指定哪个字段是sign和version，一旦指定则认为相关表引擎为CollapsingMergeTree系列。其他引擎只支持insert操作。
-          map: '{"group_code":"groupCode","user_code":",integer"}'
+          map: '{"user_img":"userImg","user_code":",integer","user_age":"userAge,integer"}'
           # 字段过滤，多个字段用逗号分隔。如果有值，则只保留这里填写的字段。
           field-filter: "user_id,user_name"
 ```

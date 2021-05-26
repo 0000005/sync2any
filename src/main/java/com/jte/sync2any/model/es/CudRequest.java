@@ -34,7 +34,7 @@ public class CudRequest {
     private Map<String, Field> pkValueMap;
 
     /**
-     * row data
+     * row data,会根据sql的操作类型不同而取TableRecords中不同位置的数据
      */
     private Map<String, Object> parameters;
 

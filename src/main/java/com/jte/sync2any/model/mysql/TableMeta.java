@@ -96,6 +96,7 @@ public class TableMeta {
     private String dynamicTablenameAssigner;
 
     private String shardingKey;
+    private String ckTableEngine;
 
 
     public SyncState getState() {
@@ -343,5 +344,13 @@ public class TableMeta {
 
     public void setSyncConfig(SyncConfig syncConfig) {
         this.syncConfig = syncConfig;
+    }
+
+    public String getCkTableEngine() {
+        return ckTableEngine;
+    }
+
+    public void setCkTableEngine(String ckTableEngine) {
+        this.ckTableEngine = ckTableEngine;
     }
 }

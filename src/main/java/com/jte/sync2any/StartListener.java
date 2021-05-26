@@ -5,8 +5,9 @@ import com.jte.sync2any.conf.KafkaConfig;
 import com.jte.sync2any.conf.RuleConfigParser;
 import com.jte.sync2any.core.Constants;
 import com.jte.sync2any.exception.ShouldNeverHappenException;
-import com.jte.sync2any.extract.SourceMetaExtract;
-import com.jte.sync2any.extract.SourceOriginDataExtract;
+import com.jte.sync2any.extract.OriginDataExtract;
+import com.jte.sync2any.extract.impl.CkMetaExtractImpl;
+import com.jte.sync2any.extract.impl.MysqlMetaExtractImpl;
 import com.jte.sync2any.load.AbstractLoadService;
 import com.jte.sync2any.model.config.Conn;
 import com.jte.sync2any.model.config.TargetDatasources;
@@ -37,10 +38,13 @@ import static com.jte.sync2any.conf.RuleConfigParser.RULES_MAP;
 public class StartListener {
 
     @Resource
-    SourceMetaExtract sourceMetaExtract;
+    MysqlMetaExtractImpl mysqlMetaExtract;
 
     @Resource
-    SourceOriginDataExtract sourceOriginDataExtract;
+    CkMetaExtractImpl ckMetaExtract;
+
+    @Resource
+    OriginDataExtract originDataExtract;
 
     @Resource
     DumpTransform dumpTransform;
@@ -53,6 +57,7 @@ public class StartListener {
 
     @Resource
     AlarmConfig alarmConfig;
+
 
     /**
      * 1、获取所有要同步的表
@@ -76,20 +81,20 @@ public class StartListener {
         System.out.println("=======================start river===========================");
         for (String key : tableRules.keySet()) {
             TableMeta currTableMeta = tableRules.get(key);
+            Conn conn = DbUtils.getConnByDbId(targetDatasources.getDatasources(), currTableMeta.getTargetDbId());
             try {
                 if (Constants.YES.equals(currTableMeta.getSyncConfig().getDumpOriginData())) {
-                    Conn conn = DbUtils.getConnByDbId(targetDatasources.getDatasources(), currTableMeta.getTargetDbId());
                     AbstractLoadService loadService = AbstractLoadService.getLoadService(conn.getType());
                     //查看目标数据库是否存在且有数据
                     Long targetCount = loadService.countData(currTableMeta.getTargetDbId(), currTableMeta.getTargetTableName());
                     //查看源数据是否有数据
-                    Long sourceCount = sourceMetaExtract.getDataCount(currTableMeta.getSourceDbId(), currTableMeta.getTableName());
+                    Long sourceCount = mysqlMetaExtract.getDataCount(currTableMeta.getSourceDbId(), currTableMeta.getTableName());
                     if (sourceCount > 0 && targetCount == 0) {
                         log.warn("start to dump origin data of " + currTableMeta.getDbName() + "." + currTableMeta.getTableName());
                         currTableMeta.setState(SyncState.LOADING_ORIGIN_DATA);
                         loadService.checkAndCreateStorage(currTableMeta);
                         //开始同步原始数据
-                        File dataFile = sourceOriginDataExtract.dumpData(currTableMeta);
+                        File dataFile = originDataExtract.dumpData(currTableMeta);
                         Iterator iterator = dumpTransform.transform(dataFile, currTableMeta);
                         while (iterator.hasNext()) {
                             List<CudRequest> requestList = (List<CudRequest>) iterator.next();
@@ -109,6 +114,13 @@ public class StartListener {
                 } else {
                     log.warn("config dumpOriginData is false,skip dump origin data,tableName:{},dbName:{},",
                             currTableMeta.getTableName(), currTableMeta.getDbName());
+                }
+
+                //如果目标数据库是ck，那么要探测目标表的引擎
+                if(Conn.DB_TYPE_CLICKHOUSE.equals(conn.getType())){
+                    String engineName = ckMetaExtract.getTableEngineName(currTableMeta.getTargetDbId(),currTableMeta.getTargetTableName());
+                    currTableMeta.setCkTableEngine(engineName);
+                    log.info("find ck tableName:{} engine:{}",currTableMeta.getTargetTableName(),engineName);
                 }
 
                 //等待同步增量数据

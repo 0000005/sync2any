@@ -1,7 +1,7 @@
 package com.jte.sync2any.extract.impl;
 
 import com.jte.sync2any.exception.ShouldNeverHappenException;
-import com.jte.sync2any.extract.SourceMetaExtract;
+import com.jte.sync2any.extract.DbMetaExtract;
 import com.jte.sync2any.model.config.Conn;
 import com.jte.sync2any.model.config.SourceMysqlDb;
 import com.jte.sync2any.model.mysql.ColumnMeta;
@@ -21,7 +21,7 @@ import java.util.Map;
 import java.util.Objects;
 
 @Service
-public class MysqlSourceMetaExtractImpl implements SourceMetaExtract {
+public class MysqlMetaExtractImpl implements DbMetaExtract {
 
     public final String GET_ALL_TABLES_SQL="select table_name from information_schema.tables where table_schema=? and table_type='base table'";
     public final String GET_COUNT_SQL="select count(*) from #{table_name}; ";
@@ -69,6 +69,11 @@ public class MysqlSourceMetaExtractImpl implements SourceMetaExtract {
         Conn conn=DbUtils.getConnByDbId(sourceMysqlDb.getDatasources(),dbId);
         List<String> tableNameList=jdbcTemplate.queryForList(GET_ALL_TABLES_SQL,String.class,new String[]{conn.getDbName()});
         return tableNameList;
+    }
+
+    @Override
+    public String getTableEngineName(String dbId, String tableName) {
+        return null;
     }
 
     private JdbcTemplate getJdbcTemplate(String dbId)

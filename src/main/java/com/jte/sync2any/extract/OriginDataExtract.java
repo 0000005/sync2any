@@ -9,7 +9,7 @@ import java.sql.SQLException;
  * 提取源中的初始数据
  * 先提取源数据，再去追kafka中的记录。
  */
-public interface SourceOriginDataExtract {
+public interface OriginDataExtract {
     /**
      *
      * @param tableMeta

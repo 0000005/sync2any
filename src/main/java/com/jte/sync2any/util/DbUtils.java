@@ -113,6 +113,14 @@ public class DbUtils {
         datasource.setMaxActive(20);
         datasource.setMaxWait(2000);
         datasource.setPassword(conn.getPassword());
+        try
+        {
+            conn.setDbName(datasource.getConnection().getCatalog());
+        }
+        catch (Exception e)
+        {
+            log.error("获取数据库名失败,url:{}",conn.getUrl(),e);
+        }
 
         return datasource;
     }

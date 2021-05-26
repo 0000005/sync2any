@@ -2,7 +2,7 @@ package com.jte.sync2any.extract.impl;
 
 import com.jte.sync2any.Tester;
 import com.jte.sync2any.conf.RuleConfigParser;
-import com.jte.sync2any.extract.SourceOriginDataExtract;
+import com.jte.sync2any.extract.OriginDataExtract;
 import com.jte.sync2any.model.config.Sync2any;
 import com.jte.sync2any.model.mysql.TableMeta;
 import org.buildobjects.process.ProcBuilder;
@@ -14,9 +14,9 @@ import org.junit.Test;
 import javax.annotation.Resource;
 import java.sql.SQLException;
 
-public class MysqlSourceOriginDataExtractImplTest  extends Tester {
+public class MysqlOriginDataExtractImplTest extends Tester {
     @Resource
-    SourceOriginDataExtract sourceOriginDataExtract;
+    OriginDataExtract originDataExtract;
 
     @Resource
     RuleConfigParser ruleParser;
@@ -33,7 +33,7 @@ public class MysqlSourceOriginDataExtractImplTest  extends Tester {
     @Test
     public void dumpDataTest() throws SQLException, IllegalAccessException {
         TableMeta tableMeta=RuleConfigParser.RULES_MAP.getIfPresent("test$wzh");
-        Assert.assertNotNull(sourceOriginDataExtract.dumpData(tableMeta));
+        Assert.assertNotNull(originDataExtract.dumpData(tableMeta));
     }
 
     @Test
