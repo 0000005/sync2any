@@ -4,7 +4,6 @@ import com.jte.sync2any.conf.AlarmConfig;
 import com.jte.sync2any.conf.KafkaConfig;
 import com.jte.sync2any.conf.RuleConfigParser;
 import com.jte.sync2any.core.Constants;
-import com.jte.sync2any.exception.ShouldNeverHappenException;
 import com.jte.sync2any.extract.OriginDataExtract;
 import com.jte.sync2any.extract.impl.CkMetaExtractImpl;
 import com.jte.sync2any.extract.impl.MysqlMetaExtractImpl;
@@ -83,6 +82,13 @@ public class StartListener {
             TableMeta currTableMeta = tableRules.get(key);
             Conn conn = DbUtils.getConnByDbId(targetDatasources.getDatasources(), currTableMeta.getTargetDbId());
             try {
+                //如果目标数据库是ck，那么要探测目标表的引擎
+                if(Conn.DB_TYPE_CLICKHOUSE.equals(conn.getType())){
+                    String engineName = ckMetaExtract.getTableEngineName(currTableMeta.getTargetDbId(),currTableMeta.getTargetTableName());
+                    currTableMeta.setCkTableEngine(engineName);
+                    log.info("find ck tableName:{} engine:{}",currTableMeta.getTargetTableName(),engineName);
+                }
+
                 if (Constants.YES.equals(currTableMeta.getSyncConfig().getDumpOriginData())) {
                     AbstractLoadService loadService = AbstractLoadService.getLoadService(conn.getType());
                     //查看目标数据库是否存在且有数据
@@ -99,12 +105,10 @@ public class StartListener {
                         while (iterator.hasNext()) {
                             List<CudRequest> requestList = (List<CudRequest>) iterator.next();
                             if (requestList.size() > 0) {
-                                long affectCount = loadService.batchAdd(requestList);
-                                if (affectCount != requestList.size()) {
-                                    throw new ShouldNeverHappenException("sync origin data fail! tableName:" + currTableMeta.getTableName() + " esIndex:" + currTableMeta.getTargetTableName());
-                                }
+                                loadService.batchAdd(requestList);
                             }
                         }
+                        loadService.flushBatchAdd();
                         log.warn("dump origin data is success,tableName:{},dbName:{},esIndex:{},topicName:{}",
                                 currTableMeta.getTableName(), currTableMeta.getDbName(), currTableMeta.getTargetTableName(), currTableMeta.getTopicName());
                     } else {
@@ -116,12 +120,6 @@ public class StartListener {
                             currTableMeta.getTableName(), currTableMeta.getDbName());
                 }
 
-                //如果目标数据库是ck，那么要探测目标表的引擎
-                if(Conn.DB_TYPE_CLICKHOUSE.equals(conn.getType())){
-                    String engineName = ckMetaExtract.getTableEngineName(currTableMeta.getTargetDbId(),currTableMeta.getTargetTableName());
-                    currTableMeta.setCkTableEngine(engineName);
-                    log.info("find ck tableName:{} engine:{}",currTableMeta.getTargetTableName(),engineName);
-                }
 
                 //等待同步增量数据
                 currTableMeta.setState(SyncState.WAIT_TO_LISTENING);

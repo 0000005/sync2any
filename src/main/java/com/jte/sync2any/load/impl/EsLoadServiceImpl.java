@@ -140,6 +140,11 @@ public class EsLoadServiceImpl extends AbstractLoadService {
         return effectNums;
     }
 
+    @Override
+    public int flushBatchAdd() {
+        return 0;
+    }
+
     /**
      * @param dbId
      * @param table

@@ -66,6 +66,14 @@ public abstract class AbstractLoadService {
     public abstract int batchAdd(List<CudRequest> requestList) throws IOException;
 
     /**
+     * 载入原始数据时，将保存在缓冲队列的数据全部持久化（ck用）
+     * @param
+     * @return
+     * @throws IOException
+     */
+    public abstract int flushBatchAdd();
+
+    /**
      * 统计某个数据库的某个表（index）中的记录数
      * 此函数谨慎调用，需看懂它的意思
      * ！！！！注意！！！！

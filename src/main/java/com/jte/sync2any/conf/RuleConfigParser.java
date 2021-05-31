@@ -138,7 +138,7 @@ public class RuleConfigParser {
     public List<SyncConfig> getSysConfigBySourceDbName(String sourceDbName){
         String dbId = sourceMysqlDb.getDatasources().stream().filter(c->c.getDbName().equalsIgnoreCase(sourceDbName)).map(e->e.getDbId()).findFirst().orElse(null);
         if(StringUtils.isBlank(dbId)){
-            return null;
+            return new ArrayList<SyncConfig>();
         }
         return sync2any.getSyncConfigList()
                 .stream()

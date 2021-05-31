@@ -112,6 +112,11 @@ public class MysqlLoadServiceImpl extends AbstractLoadService {
     }
 
     @Override
+    public int flushBatchAdd() {
+        return 0;
+    }
+
+    @Override
     public Long countData(String dbId, String table) {
         JdbcTemplate jdbcTemplate = (JdbcTemplate) DbUtils.getTargetDsByDbId(allTargetDatasource, dbId);
         String countSql = String.format(COUNT_SQL_TEMPLATE, table);
