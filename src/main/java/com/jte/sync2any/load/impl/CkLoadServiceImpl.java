@@ -63,7 +63,7 @@ public class CkLoadServiceImpl extends AbstractLoadService {
     /**
      * 用来存放待持久化的增量数据
      */
-    private LinkedBlockingQueue<InsertItem> saveQueue = new LinkedBlockingQueue<>();
+    private static LinkedBlockingQueue<InsertItem> saveQueue = new LinkedBlockingQueue<>();
     /**
      * 用来存放待持久化的存留数据
      * 该集合不存在并发，每次使用只保存同一类型的表数据
@@ -136,8 +136,8 @@ public class CkLoadServiceImpl extends AbstractLoadService {
             batchAddQueue.add(new InsertItem(tableMeta, valuesSql));
         }
 
-        //每超过10000行记录入库一次
-        if(batchAddQueue.size()<10000 && !isForce){
+        //每超过100000行记录入库一次
+        if(batchAddQueue.size()<100000 && !isForce){
             return 0;
         }
 
@@ -168,12 +168,20 @@ public class CkLoadServiceImpl extends AbstractLoadService {
 
     @Override
     public Long countData(String dbId, String table) {
+        String key = dbId+"-"+table;
+        Long count= cacheInitCount.get(key);
+        if(Objects.nonNull(count))
+        {
+            return count;
+        }
         DataSource ds = (DataSource) DbUtils.getTargetDsByDbId(allTargetDatasource, dbId);
         try {
             Connection connection = ds.getConnection();
             String countSql = String.format(COUNT_SQL_TEMPLATE, table);
             Number n = SqlExecutor.query(connection,countSql, new NumberHandler());
-            return n.longValue();
+            count=n.longValue();
+            cacheInitCount.put(key,count);
+            return count;
         }catch (Exception e){
             log.error("count error:",e);
             throw new ShouldNeverHappenException("count error");
@@ -343,5 +351,9 @@ public class CkLoadServiceImpl extends AbstractLoadService {
         } finally {
             DbUtil.close(conn);
         }
+    }
+
+    public static boolean isSaveQueueEmpty(){
+        return saveQueue.isEmpty();
     }
 }

@@ -8,10 +8,7 @@ import com.jte.sync2any.util.CollectionUtils;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
@@ -23,6 +20,11 @@ public abstract class AbstractLoadService {
      */
     protected Set<String> LOAD_STORAGE = new HashSet<>();
     private static Map<String,AbstractLoadService> serviceMap = new ConcurrentHashMap<>();
+
+    /**
+     * 用于缓存count计数，对于多张表同步到一账表时用。
+     */
+    protected final Map<String,Long> cacheInitCount =new HashMap<>();
 
     public static AbstractLoadService getLoadService(String targetType)
     {

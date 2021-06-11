@@ -46,7 +46,6 @@ public class EsLoadServiceImpl extends AbstractLoadService {
     @Resource
     Map<String,Object> allTargetDatasource;
 
-    private final Map<String,Long> cacheCount=new HashMap<>();
 
     @Override
     public int operateData(CudRequest request) throws IOException {
@@ -154,21 +153,22 @@ public class EsLoadServiceImpl extends AbstractLoadService {
     @Override
     public Long countData(String dbId,String table) throws IOException {
         RestHighLevelClient client = (RestHighLevelClient) DbUtils.getTargetDsByDbId(allTargetDatasource,dbId);
-        Long count=cacheCount.get(table);
+        String key = dbId+"-"+table;
+        Long count= cacheInitCount.get(key);
         if(Objects.nonNull(count))
         {
             return count;
         }
         if(!isIndexExists(dbId, table))
         {
-            cacheCount.put(table,0L);
+            cacheInitCount.put(key,0L);
             return 0L;
         }
         CountRequest countRequest = new CountRequest(table);
         countRequest.query(QueryBuilders.matchAllQuery());
         CountResponse countResponse = client.count(countRequest, RequestOptions.DEFAULT);
         count= countResponse.getCount();
-        cacheCount.put(table,count);
+        cacheInitCount.put(key,count);
         return count;
     }
 
