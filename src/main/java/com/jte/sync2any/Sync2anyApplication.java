@@ -43,7 +43,7 @@ public class Sync2anyApplication {
                     try {
                         Thread.sleep(1000);
                     } catch (InterruptedException e) {
-                        e.printStackTrace();
+                        log.error("wait saveQueue empty.",e);
                     }
                     i++;
                 }

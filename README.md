@@ -4,6 +4,9 @@ sync2any可以借助腾讯云数据订阅（DTS）将腾讯云数据库（mysql�
 
 实时同步数据流为：TDSQL -> CKAFKA -> sync2any -> Elasticsearch
 
+- 支持的数据源：TDSQL
+- 支持的目标源：Mysql、ElasticSearch、Clickhouse
+
 ![image](https://cloud-1251017115.cos.ap-guangzhou.myqcloud.com/CPMS/maintenance/data_flow.png)
 
 ## 为什么开发这个项目？
@@ -11,15 +14,15 @@ sync2any可以借助腾讯云数据订阅（DTS）将腾讯云数据库（mysql�
 
 ## 使用先决条件
 - 购买使用了腾讯云提供的[TDSQL](https://cloud.tencent.com/product/dcdb)
-- 购买了腾讯云提供的[CKAFKA](https://cloud.tencent.com/product/ckafka)
 
 ## 状态面板
 ![image](https://cloud-1251017115.cos.ap-guangzhou.myqcloud.com/CPMS/maintenance/20200514160657.png)
 
 ## 配置与安装
 ### 腾讯云端的配置
-1. 进入CKAFKA中，新建一个`topic`。
-2. 进入MariaDB的菜单，找到数据同步模块（别问我为什么TDSQL的数据同步放到了MariaDB里面，），新建同步任务，将数据投递到刚刚创建的`topic`中。
+1. 登录腾讯云->数据传输服务->数据订阅
+2. 新建数据订阅，选择好库表
+3. 新建消费组
 #### 本地启动
 1. 安装好`mysqldump`
 2. 从Release中下载最新版的源码,或者编译好的jar包
@@ -36,7 +39,7 @@ sync2any可以借助腾讯云数据订阅（DTS）将腾讯云数据库（mysql�
 kafka:
   address: 127.0.0.1:32768
 
-#【必填】同步目标目标的基本配置（支持mysql和es）
+#【必填】同步目标目标的基本配置（支持mysql、es、clickhouse）
 target.datasources:
   -
     #【必填】标识数据源，每个必须不一样
@@ -55,8 +58,17 @@ target.datasources:
     url: jdbc:mysql://127.0.0.1:3306/test?useUnicode=true&useSSL=false&characterEncoding=UTF-8&autoReconnect=true&failOverReadOnly=false&useOldAliasMetadataBehavior=true&allowMultiQueries=true&serverTimezone=Hongkong
     username: root
     password: root
+  -
+    #【必填】标识数据源，每个必须不一样
+    db-id: 3
+    #目标数据源的类型（可以为es或mysql）
+    type: clickhouse
+    url: jdbc:clickhouse://127.0.0.1:8121/test
+    username: default
+    password: default
 
-#【必填】源数据库【支持MySQL和Tdsql】，可以配置多个数据库
+
+#【必填】源数据库【Tdsql】，可以配置多个数据库
 source.mysql:
   datasources:
     -
@@ -117,6 +129,17 @@ sync2any:
           field-filter: "user_id,user_name"
 ```
 ## 其他碎碎念
+### 消费位置重置
+当我们发现了一些数据错误，想要重新消费之前的消息时可以用到该接口。但是该功能只支持一个分区的情况。
+1. 登录腾讯云，进入数据订阅，找到消费管理中的“查询消费点”功能。
+2. 查询你要重置的时间当时的消费点。
+3. 以put方法调用 `http://127.0.0.1:9070/offset?topicName=topic-subs-7a4bu6zz48-tdsqlshard-1dksu10j&sourceDbId=1&topicGroup=consumer-grp-subs-7a4bu6zz48-test&offset=0` 接口。
+
+### 自定义目标数据分发规则
+当我们源数据库的A表要按照一定规则同步到目标数据库的A_1,A_2,A_3等多个表时可以用到`自定义目标数据分发规则`。
+1. 配置文件中`rules`下配置`dynamic_tablename_assigner`属性，该属性的值为Spring bean的名称。
+2. 该新增的自定义规则类只需要基础抽象类`com.jte.sync2any.load.DynamicDataAssign`,并实现`dynamicTableName`方法即可。
+
 ### 一些约定
 - 当tdsql的表中存在数据，且es中index不存在或者index中无document时才会dump原始数据同步到es。
 - es的index默认命名规则为“数据库名-表名”,es那边的字段名和tdsql保持一致。默认所有同步过去的名称都会转化为小写。
@@ -128,8 +151,7 @@ sync2any:
 
 
 ### 最佳实践
-- CKAFKA创建topic时，一定要将`max.message.bytes`设置为最大值8MB。否则流量高峰时会有TDSQL投递消息到CKAFKA失败的情况发生。
-- CKAFKA创建topic时，将`retention.ms`也就是“topic维度的消息保留时间”设置到一个合适的值。不然丢了消息也找不回来。不过不能太大，因为硬盘堆积满了之后，ckafa将不再接受生产者新投递的消息。
+- 如果想要保证数据同步的正确性，创建数据订阅时，kafka的分区数填1。
 - 延迟告警的设置最好大于10秒，因为本身就有3-4秒的延迟。
 - 建议每个表都单独建立一个同步任务，并且用不同的topic。这样可以隔离故障，降低时同步延迟。
 
