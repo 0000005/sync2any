@@ -101,7 +101,9 @@ sync2any:
       max-idle-in-minute: 120
       #【选填】告警发生180分钟后，如果未恢复，则再次告警
       next-trigger-alert-in-minute: 180
-      #【选填】是否载入原始数据（默认开启【1】）
+      #【选填】默认表名后缀(优先级比rules.index_table小)
+      target-table-suffix: _all
+      #【选填】是否载入原始数据（0否，1是；默认开启【1】）
       dump-origin-data: 0
       mq:
         # 监听的CKAFKA的topic名称（在这整个应用中，多个同步任务不可以监听通一个topic）

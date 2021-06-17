@@ -19,7 +19,7 @@ public class CudRequest {
     private SubscribeDataProto.DMLType dmlType;
 
     /**
-     * 对于目标数据源：对mysql来说是表名，对es来说是index名称
+     * 对于目标数据源：对ck和mysql来说是表名，对es来说是index名称
      */
     private String table;
 

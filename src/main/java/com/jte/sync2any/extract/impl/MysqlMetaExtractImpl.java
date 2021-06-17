@@ -1,5 +1,6 @@
 package com.jte.sync2any.extract.impl;
 
+import cn.hutool.db.DbUtil;
 import com.jte.sync2any.exception.ShouldNeverHappenException;
 import com.jte.sync2any.extract.DbMetaExtract;
 import com.jte.sync2any.model.config.Conn;
@@ -11,7 +12,6 @@ import com.jte.sync2any.model.mysql.TableMeta;
 import com.jte.sync2any.util.DbUtils;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
@@ -40,17 +40,15 @@ public class MysqlMetaExtractImpl implements DbMetaExtract {
         Connection conn=null;
         try {
             conn=jdbcTemplate.getDataSource().getConnection();
-            Statement stmt = jdbcTemplate.getDataSource().getConnection().createStatement();
+            Statement stmt = conn.createStatement();
             ResultSet rs = stmt.executeQuery(sql);
-            return resultSetMetaToSchema(rs.getMetaData(), jdbcTemplate.getDataSource().getConnection().getMetaData());
+            return resultSetMetaToSchema(rs.getMetaData(), conn.getMetaData());
         }
         catch (Exception e) {
             throw new ShouldNeverHappenException(String.format("Failed to fetch schema of %s", tableName), e);
         }
         finally {
-            if(Objects.nonNull(conn)){
-                DataSourceUtils.releaseConnection(conn,jdbcTemplate.getDataSource());
-            }
+            DbUtil.close(conn);
         }
     }
 

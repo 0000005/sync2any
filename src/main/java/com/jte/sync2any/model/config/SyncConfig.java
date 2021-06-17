@@ -45,4 +45,8 @@ public class SyncConfig {
      * 是否载入原始数据
      */
     private String dumpOriginData = Constants.YES;
+    /**
+     * 默认表名后缀
+     */
+    private String targetTableSuffix = "";
 }

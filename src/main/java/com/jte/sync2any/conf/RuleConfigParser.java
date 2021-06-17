@@ -174,7 +174,7 @@ public class RuleConfigParser {
                 .findFirst().orElse(null);
 
         //填充匹配规则
-        parseColumnMeta(config.getTargetConn().getType(),tableMeta,rule);
+        parseColumnMeta(config.getTargetConn().getType(),tableMeta,rule,config);
         RULES_MAP.put(key,tableMeta);
         return tableMeta;
     }
@@ -303,13 +303,13 @@ public class RuleConfigParser {
         return columnMeta;
     }
 
-    private TableMeta parseColumnMeta(String targetType, TableMeta tableMeta, Rule rule){
+    private TableMeta parseColumnMeta(String targetType, TableMeta tableMeta, Rule rule,SyncConfig config){
         if(Objects.isNull(rule))
         {
             if(Conn.DB_TYPE_MYSQL.equals(targetType)||Conn.DB_TYPE_CLICKHOUSE.equals(targetType)){
-                tableMeta.setTargetTableName(tableMeta.getTableName().toLowerCase());
+                tableMeta.setTargetTableName(tableMeta.getTableName().toLowerCase()+config.getTargetTableSuffix());
             }else{
-                tableMeta.setTargetTableName(tableMeta.getDbName().toLowerCase()+"-"+tableMeta.getTableName().toLowerCase());
+                tableMeta.setTargetTableName(tableMeta.getDbName().toLowerCase()+"-"+tableMeta.getTableName().toLowerCase()+config.getTargetTableSuffix());
             }
 
             for(String columnName:tableMeta.getAllColumnMap().keySet())
@@ -333,9 +333,9 @@ public class RuleConfigParser {
         else
         {
             if(Conn.DB_TYPE_MYSQL.equals(targetType)){
-                tableMeta.setTargetTableName(tableMeta.getTableName().toLowerCase());
+                tableMeta.setTargetTableName(tableMeta.getTableName().toLowerCase()+config.getTargetTableSuffix());
             }else{
-                tableMeta.setTargetTableName(tableMeta.getDbName().toLowerCase()+"-"+tableMeta.getTableName().toLowerCase());
+                tableMeta.setTargetTableName(tableMeta.getDbName().toLowerCase()+"-"+tableMeta.getTableName().toLowerCase()+config.getTargetTableSuffix());
             }
         }
         if(StringUtils.isNotBlank(rule.getFieldFilter()))

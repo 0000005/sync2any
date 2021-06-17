@@ -1,5 +1,6 @@
 package com.jte.sync2any.load.impl;
 
+import cn.hutool.core.io.file.FileWriter;
 import cn.hutool.db.DbUtil;
 import cn.hutool.db.GlobalDbConfig;
 import cn.hutool.db.handler.NumberHandler;
@@ -20,6 +21,8 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import javax.sql.DataSource;
+import java.io.File;
+import java.security.SecureRandom;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Types;
@@ -116,6 +119,7 @@ public class CkLoadServiceImpl extends AbstractLoadService {
     }
 
     /**
+     * TODO 暂不支持dynamic_tablename_assigner分发到多个表
      * 批量新增
      * @param requestList
      * @param isForce 是否强制入库
@@ -123,10 +127,16 @@ public class CkLoadServiceImpl extends AbstractLoadService {
      */
     public int batchAdd(List<CudRequest> requestList, boolean isForce) {
         log.debug("ck batchAdd requestList size:{} isForce:{}",requestList.size(),isForce);
+        //总待入库的请求为空而且当前待入库的请求为空，则直接返回结束
         if(batchAddQueue.isEmpty() && requestList.isEmpty()){
             return 0;
         }
+        //非强制入库且当前待入库的请求为空，则直接返回结束
         if(requestList.isEmpty() && !isForce){
+            return 0;
+        }
+        //强制入库，但总待入库和当前待入库的请求都为空，则直接返回结束
+        if(batchAddQueue.isEmpty() && requestList.isEmpty() && isForce){
             return 0;
         }
         for(CudRequest request : requestList){
@@ -136,19 +146,20 @@ public class CkLoadServiceImpl extends AbstractLoadService {
             batchAddQueue.add(new InsertItem(tableMeta, valuesSql));
         }
 
-        //每超过100000行记录入库一次
-        if(batchAddQueue.size()<100000 && !isForce){
-            return 0;
+        if(!requestList.isEmpty()){
+            lastBatchAddTableMeta=requestList.get(0).getTableMeta();
         }
 
+        //每超过10000行记录入库一次
+        if(batchAddQueue.size()<10000 && !isForce){
+            return 0;
+        }
+        //////////////////////开始真正入库/////////////////////////
         List<String> valueList = new ArrayList<>();
         for(int i =0;i<batchAddQueue.size();i++){
             valueList.add(batchAddQueue.get(i).getValuesSql());
         }
-        //最后一次flush的情况
-        if(!requestList.isEmpty()){
-            lastBatchAddTableMeta=requestList.get(0).getTableMeta();
-        }
+
         TableMeta tableMeta = lastBatchAddTableMeta;
         log.debug("batch save size:{} table:{}",batchAddQueue.size(),tableMeta.getTargetTableName());
         String sql = generateCompleteInsertSql(tableMeta,valueList);
@@ -175,8 +186,9 @@ public class CkLoadServiceImpl extends AbstractLoadService {
             return count;
         }
         DataSource ds = (DataSource) DbUtils.getTargetDsByDbId(allTargetDatasource, dbId);
+        Connection connection=null;
         try {
-            Connection connection = ds.getConnection();
+            connection = ds.getConnection();
             String countSql = String.format(COUNT_SQL_TEMPLATE, table);
             Number n = SqlExecutor.query(connection,countSql, new NumberHandler());
             count=n.longValue();
@@ -185,6 +197,8 @@ public class CkLoadServiceImpl extends AbstractLoadService {
         }catch (Exception e){
             log.error("count error:",e);
             throw new ShouldNeverHappenException("count error");
+        }finally {
+            DbUtil.close(connection);
         }
     }
 
@@ -347,7 +361,10 @@ public class CkLoadServiceImpl extends AbstractLoadService {
             return SqlExecutor.execute(conn, sql);
         } catch (SQLException e) {
             log.error("execute sql error:", e);
-            throw new ShouldNeverHappenException("execute sql error");
+            String filePath=System.getProperty("java.io.tmpdir")+File.separator+new SecureRandom().nextInt(9999999)+".error.sql";
+            FileWriter writer = new FileWriter(filePath);
+            writer.write(sql);
+            throw new ShouldNeverHappenException("execute sql error,error sql:"+filePath);
         } finally {
             DbUtil.close(conn);
         }

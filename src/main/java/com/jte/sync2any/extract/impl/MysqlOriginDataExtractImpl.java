@@ -1,5 +1,6 @@
 package com.jte.sync2any.extract.impl;
 
+import cn.hutool.db.DbUtil;
 import com.jte.sync2any.exception.ShouldNeverHappenException;
 import com.jte.sync2any.extract.OriginDataExtract;
 import com.jte.sync2any.model.config.Conn;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
 import javax.annotation.Resource;
 import java.io.File;
 import java.security.SecureRandom;
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.Objects;
@@ -49,48 +51,56 @@ public class MysqlOriginDataExtractImpl implements OriginDataExtract {
      */
     @Override
     public File dumpData(TableMeta tableMeta) throws SQLException, IllegalAccessException {
-        Conn dbConfig= sourceMysqlDb.getDatasources().stream()
-                .filter(d->d.getDbName().equals(tableMeta.getDbName()))
-                .findFirst().orElse(null);
-        if(Objects.isNull(dbConfig))
-        {
-            throw new ShouldNeverHappenException("db config is not found:{}"+tableMeta.getDbName());
+        Connection dbConn = null;
+        try{
+
+            Conn dbConfig= sourceMysqlDb.getDatasources().stream()
+                    .filter(d->d.getDbName().equals(tableMeta.getDbName()))
+                    .findFirst().orElse(null);
+            if(Objects.isNull(dbConfig))
+            {
+                throw new ShouldNeverHappenException("db config is not found:{}"+tableMeta.getDbName());
+            }
+
+            JdbcTemplate jdbcTemplate = allSourceTemplate.get(tableMeta.getSourceDbId());
+            dbConn =jdbcTemplate.getDataSource().getConnection();
+            String dbUrl=dbConn.getMetaData().getURL();
+            Map<String,String> dbParam=DbUtils.getParamFromUrl(dbUrl);
+            String filePath=System.getProperty("java.io.tmpdir")+File.separator+tableMeta.getDbName()+"_"+tableMeta.getTableName()+"_"+new SecureRandom().nextInt(99999)+".data.sql";
+            File sqlFile= new File(filePath);
+            log.info("正在dump数据，表:{}",tableMeta.getTableName());
+            ProcBuilder builder = new ProcBuilder(sync2any.getMysqldump());
+            builder.withArg("-h"+dbParam.get("host"));
+            builder.withArg("-P"+dbParam.get("port"));
+            builder.withArg("-u"+dbConfig.getUsername());
+            builder.withArg("-p"+dbConfig.getPassword());
+            builder.withArg("-t");
+            builder.withArg("-c");
+            builder.withArg("--compact");
+            builder.withArg("--single-transaction");
+            builder.withArgs("--databases",tableMeta.getDbName());
+            builder.withArgs("--tables",tableMeta.getTableName());
+            builder.withOutputConsumer(stream -> FileUtils.copyToFile(stream,sqlFile));
+            //30分钟超时
+            builder.withTimeoutMillis(1000*60*30);
+            ProcResult result=builder.run();
+            long sizeInBytes = FileUtils.sizeOf(sqlFile);
+            log.info("表{} dump完毕！size:{}mb",tableMeta.getTableName(),sizeInBytes/1024/1024);
+
+            if(result.getExitValue()!=0)
+            {
+                throw new IllegalAccessException("mysql dump fail! exitValue:"+result.getExitValue()+" output:"+result.getOutputString());
+            }
+
+
+            if(!sqlFile.exists())
+            {
+                throw new ShouldNeverHappenException("mysqldump error,sql file is not exists!");
+            }
+
+            return sqlFile;
+        }finally {
+            DbUtil.close(dbConn);
         }
-
-        JdbcTemplate jdbcTemplate = allSourceTemplate.get(tableMeta.getSourceDbId());
-        String dbUrl=jdbcTemplate.getDataSource().getConnection().getMetaData().getURL();
-        Map<String,String> dbParam=DbUtils.getParamFromUrl(dbUrl);
-        String filePath=System.getProperty("java.io.tmpdir")+File.separator+tableMeta.getDbName()+"_"+tableMeta.getTableName()+"_"+new SecureRandom().nextInt(99999)+".data.sql";
-        File sqlFile= new File(filePath);
-
-        ProcBuilder builder = new ProcBuilder(sync2any.getMysqldump());
-        builder.withArg("-h"+dbParam.get("host"));
-        builder.withArg("-P"+dbParam.get("port"));
-        builder.withArg("-u"+dbConfig.getUsername());
-        builder.withArg("-p"+dbConfig.getPassword());
-        builder.withArg("-t");
-        builder.withArg("-c");
-        builder.withArg("--compact");
-        builder.withArg("--single-transaction");
-        builder.withArgs("--databases",tableMeta.getDbName());
-        builder.withArgs("--tables",tableMeta.getTableName());
-        builder.withOutputConsumer(stream -> FileUtils.copyToFile(stream,sqlFile));
-        //30分钟超时
-        builder.withTimeoutMillis(1000*60*30);
-        ProcResult result=builder.run();
-
-
-        if(result.getExitValue()!=0)
-        {
-            throw new IllegalAccessException("mysql dump fail! exitValue:"+result.getExitValue()+" output:"+result.getOutputString());
-        }
-
-
-        if(!sqlFile.exists())
-        {
-            throw new ShouldNeverHappenException("mysqldump error,sql file is not exists!");
-        }
-
-        return sqlFile;
     }
 }
