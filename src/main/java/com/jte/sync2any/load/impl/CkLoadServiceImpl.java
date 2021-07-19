@@ -291,35 +291,40 @@ public class CkLoadServiceImpl extends AbstractLoadService {
 
         @Override
         public void run() {
-            Map<TableMeta, List<String>> dataMap = new HashMap<>();
-            int currentQueueSize = new Integer(saveQueue.size());
-            //每次最多1万
-            currentQueueSize = currentQueueSize > 10000 ? 10000 : currentQueueSize;
-            log.debug("ck currentQueueSize:{}", currentQueueSize);
-            for (int i = 0; i < currentQueueSize; i++) {
-                InsertItem insertItem = saveQueue.poll();
-                if (Objects.isNull(insertItem)) {
-                    break;
+            try{
+                Map<TableMeta, List<String>> dataMap = new HashMap<>();
+                int currentQueueSize = new Integer(saveQueue.size());
+                //每次最多1万
+                currentQueueSize = currentQueueSize > 10000 ? 10000 : currentQueueSize;
+                log.debug("ck currentQueueSize:{}", currentQueueSize);
+                for (int i = 0; i < currentQueueSize; i++) {
+                    InsertItem insertItem = saveQueue.poll();
+                    if (Objects.isNull(insertItem)) {
+                        break;
+                    }
+                    List<String> valueList = dataMap.get(insertItem.getTableMeta());
+                    if (Objects.isNull(valueList)) {
+                        valueList = new ArrayList<>();
+                        valueList.add(insertItem.valuesSql);
+                        dataMap.put(insertItem.getTableMeta(), valueList);
+                    } else {
+                        valueList.add(insertItem.valuesSql);
+                    }
                 }
-                List<String> valueList = dataMap.get(insertItem.getTableMeta());
-                if (Objects.isNull(valueList)) {
-                    valueList = new ArrayList<>();
-                    valueList.add(insertItem.valuesSql);
-                    dataMap.put(insertItem.getTableMeta(), valueList);
-                } else {
-                    valueList.add(insertItem.valuesSql);
+                Set<TableMeta> tableMetaSet = dataMap.keySet();
+                log.debug("ck tableMetaSize:{}", tableMetaSet.size());
+                //分组生成完整的insert语句
+                for (TableMeta tableMeta : tableMetaSet) {
+                    String sql = generateCompleteInsertSql(tableMeta,dataMap.get(tableMeta));
+                    log.debug("sql:{}", sql);
+                    //入库
+                    DataSource ds = (DataSource) allTargetDatasource.get(tableMeta.getTargetDbId());
+                    saveToCk(sql.toString(), ds);
                 }
+            }catch (Exception e){
+                log.error("定时持久化异常：",e);
             }
-            Set<TableMeta> tableMetaSet = dataMap.keySet();
-            log.debug("ck tableMetaSize:{}", tableMetaSet.size());
-            //分组生成完整的insert语句
-            for (TableMeta tableMeta : tableMetaSet) {
-                String sql = generateCompleteInsertSql(tableMeta,dataMap.get(tableMeta));
-                log.debug("sql:{}", sql);
-                //入库
-                DataSource ds = (DataSource) allTargetDatasource.get(tableMeta.getTargetDbId());
-                saveToCk(sql.toString(), ds);
-            }
+
         }
     }
 

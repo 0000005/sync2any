@@ -68,7 +68,7 @@ public class MysqlOriginDataExtractImpl implements OriginDataExtract {
             Map<String,String> dbParam=DbUtils.getParamFromUrl(dbUrl);
             String filePath=System.getProperty("java.io.tmpdir")+File.separator+tableMeta.getDbName()+"_"+tableMeta.getTableName()+"_"+new SecureRandom().nextInt(99999)+".data.sql";
             File sqlFile= new File(filePath);
-            log.info("正在dump数据，表:{}",tableMeta.getTableName());
+            log.info("正在dump数据，表：{}，sql文件：{}",tableMeta.getTableName(),filePath);
             ProcBuilder builder = new ProcBuilder(sync2any.getMysqldump());
             builder.withArg("-h"+dbParam.get("host"));
             builder.withArg("-P"+dbParam.get("port"));
@@ -78,6 +78,7 @@ public class MysqlOriginDataExtractImpl implements OriginDataExtract {
             builder.withArg("-c");
             builder.withArg("--compact");
             builder.withArg("--single-transaction");
+            builder.withArg("--skip-tz-utc");
             builder.withArgs("--databases",tableMeta.getDbName());
             builder.withArgs("--tables",tableMeta.getTableName());
             builder.withOutputConsumer(stream -> FileUtils.copyToFile(stream,sqlFile));

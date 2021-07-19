@@ -15,11 +15,14 @@
  */
 package com.jte.sync2any.model.mysql;
 
+import cn.hutool.core.date.DateField;
+import cn.hutool.core.date.DatePattern;
+import cn.hutool.core.date.DateTime;
 import com.jte.sync2any.exception.ShouldNeverHappenException;
 import com.jte.sync2any.model.mq.SubscribeDataProto;
 import lombok.extern.slf4j.Slf4j;
 
-import javax.xml.bind.DatatypeConverter;
+import java.io.UnsupportedEncodingException;
 import java.sql.SQLException;
 import java.util.*;
 
@@ -273,12 +276,21 @@ public class TableRecords {
             String columnName = colDef.getName().toLowerCase();
             ColumnMeta currColumnMeta = tableMeta.getColumnMeta(columnName);
             //TODO 如果更新了表结构，那么这个地方可能找不到最新的字段
-            if(!currColumnMeta.isInclude()){
+            if(currColumnMeta==null || !currColumnMeta.isInclude()){
                 //该字段从配置文件中排除了
                 continue;
             }
-            Field newField = createFieldValue(decode(col),currColumnMeta,tableMeta);
-            fields.add(newField);
+            try{
+                log.debug("field sourceDataType1:{} sourceDataType2:{} sourceDataTypeName:{} name:{} value:{}"
+                        ,col.getDataType(),currColumnMeta.getDataType()
+                        ,currColumnMeta.getDataTypeName(),currColumnMeta.getColumnName()
+                        ,decode(col));
+                Field newField = createFieldValue(decode(col),currColumnMeta,tableMeta);
+                fields.add(newField);
+            }catch (UnsupportedEncodingException e){
+                throw new ShouldNeverHappenException("UnsupportedEncodingException "+e.getMessage());
+            }
+
         }
     }
 
@@ -289,12 +301,18 @@ public class TableRecords {
             field.setKeyType(KeyType.PRIMARY_KEY);
         }
         field.setType(columnMeta.getDataType());
-        field.setValue(value);
+        if(Objects.nonNull(value) && "TIMESTAMP".equalsIgnoreCase(columnMeta.getDataTypeName())){
+            DateTime dateTime = new DateTime(value, DatePattern.NORM_DATETIME_FORMAT);
+            dateTime.offset(DateField.HOUR,8);
+            field.setValue(dateTime.toString());
+        }else {
+            field.setValue(value);
+        }
         return field;
     }
 
 
-    private static String decode(SubscribeDataProto.Data data) {
+    private static String decode(SubscribeDataProto.Data data) throws UnsupportedEncodingException {
         switch (data.getDataType()) {
             case INT8:
             case INT16:
@@ -311,7 +329,7 @@ public class TableRecords {
             case STRING:
                 return new String(data.getBv().toByteArray());
             case BYTES:
-                return DatatypeConverter.printHexBinary(data.getBv().toByteArray());
+                return data.getBv().toString("utf-8");
             case NA:
                 return "DEFAULT";
             case NIL:
