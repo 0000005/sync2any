@@ -11,6 +11,6 @@ public class AlertUtilsTest {
 
     @Test
     public void testSendAlert(){
-        AlertUtils.sendAlert("SCU72614T8b2e9f4c628209429a1c81fd40a175be5e041dbec6d33","人人都说中国话");
+        AlertUtils.sendAlert("YinWenJun","人人都说中国话");
     }
 }

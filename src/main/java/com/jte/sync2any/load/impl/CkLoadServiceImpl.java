@@ -71,7 +71,7 @@ public class CkLoadServiceImpl extends AbstractLoadService {
      * 用来存放待持久化的存留数据
      * 该集合不存在并发，每次使用只保存同一类型的表数据
      */
-    private List<InsertItem> batchAddQueue = new LinkedList<>();
+    private LinkedBlockingQueue<InsertItem> batchAddQueue = new LinkedBlockingQueue<>();
     /**
      * 最新的批量载入的TableMeta
      */
@@ -139,33 +139,34 @@ public class CkLoadServiceImpl extends AbstractLoadService {
         if(batchAddQueue.isEmpty() && requestList.isEmpty() && isForce){
             return 0;
         }
-        for(CudRequest request : requestList){
+        requestList.stream().parallel().forEach((request ->{
             TableMeta tableMeta = request.getTableMeta();
             boolean isCollapsingMergeTree = tableMeta.getCkTableEngine().contains(CMT_ENGINE);
             String valuesSql = buildSingleValuesByReq(request, tableMeta, isCollapsingMergeTree ? "1" : null);
             batchAddQueue.add(new InsertItem(tableMeta, valuesSql));
-        }
+        } ));
 
         if(!requestList.isEmpty()){
             lastBatchAddTableMeta=requestList.get(0).getTableMeta();
         }
 
-        //每超过10000行记录入库一次
+        //每超过N行记录入库一次
         if(batchAddQueue.size()<10000 && !isForce){
             return 0;
         }
         //////////////////////开始真正入库/////////////////////////
         List<String> valueList = new ArrayList<>();
-        for(int i =0;i<batchAddQueue.size();i++){
-            valueList.add(batchAddQueue.get(i).getValuesSql());
+        int batchAddQueueSize = batchAddQueue.size();
+        for(int i =0;i<batchAddQueueSize;i++){
+            valueList.add(batchAddQueue.poll().getValuesSql());
         }
 
         TableMeta tableMeta = lastBatchAddTableMeta;
-        log.debug("batch save size:{} table:{}",batchAddQueue.size(),tableMeta.getTargetTableName());
         String sql = generateCompleteInsertSql(tableMeta,valueList);
 
         DataSource ds = (DataSource) allTargetDatasource.get(tableMeta.getTargetDbId());
         saveToCk(sql,ds);
+        log.debug("batch save size:{} table:{}",batchAddQueueSize,tableMeta.getTargetTableName());
         //清空缓冲数组
         batchAddQueue.clear();
 
@@ -239,7 +240,14 @@ public class CkLoadServiceImpl extends AbstractLoadService {
                     } else if (columnIsNumber(dataType)) {
                         return value.toString();
                     } else {
-                        return "'" + value.toString() + "'";
+                        String columnValue = value.toString();
+                        if(columnValue.contains("\\")){
+                            columnValue = columnValue.replace("\\","\\\\");
+                        }
+                        if(columnValue.contains("'")){
+                            columnValue = columnValue.replace("'","\\'");
+                        }
+                        return "'" + columnValue + "'";
                     }
                 }).collect(Collectors.joining(", "));
         if (StringUtils.isNotBlank(sign)) {

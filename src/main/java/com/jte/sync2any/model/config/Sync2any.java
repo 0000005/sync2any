@@ -15,6 +15,10 @@ public class Sync2any {
      */
     private String mysqldump;
     /**
+     * "mysqldump" sql data save location
+     */
+    private String mysqldumpDataLocation;
+    /**
      *  which mysql database need to sync.
      */
     private List<SyncConfig> syncConfigList;

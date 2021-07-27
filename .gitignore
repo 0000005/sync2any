@@ -31,3 +31,4 @@ build/
 .vscode/
 /config/application-dev.yml
 /config/application-prod.yml
+/config/application-prod_log.yml

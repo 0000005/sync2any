@@ -16,6 +16,7 @@ import com.jte.sync2any.model.mysql.TableMeta;
 import com.jte.sync2any.transform.DumpTransform;
 import com.jte.sync2any.util.DbUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.io.FileUtils;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.EventListener;
@@ -26,6 +27,7 @@ import java.io.File;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import static com.jte.sync2any.conf.RuleConfigParser.RULES_MAP;
 
@@ -96,6 +98,7 @@ public class StartListener {
                     //查看源数据是否有数据
                     Long sourceCount = mysqlMetaExtract.getDataCount(currTableMeta.getSourceDbId(), currTableMeta.getTableName());
                     if (sourceCount > 0 && targetCount == 0) {
+                        long startTime = System.currentTimeMillis();
                         log.warn("start to dump origin data of " + currTableMeta.getDbName() + "." + currTableMeta.getTableName());
                         currTableMeta.setState(SyncState.LOADING_ORIGIN_DATA);
                         loadService.checkAndCreateStorage(currTableMeta);
@@ -109,8 +112,12 @@ public class StartListener {
                             }
                         }
                         loadService.flushBatchAdd();
-                        log.warn("dump origin data is success,tableName:{},dbName:{},esIndex:{},topicName:{}",
-                                currTableMeta.getTableName(), currTableMeta.getDbName(), currTableMeta.getTargetTableName(), currTableMeta.getTopicName());
+                        //马上删除dump下的文件
+                        if(Objects.nonNull(dataFile) && dataFile.exists()){
+                            FileUtils.forceDelete(dataFile);
+                        }
+                        log.warn("dump origin data is success,tableName:{},dbName:{},esIndex:{},topicName:{} costTime:{}",
+                                currTableMeta.getTableName(), currTableMeta.getDbName(), currTableMeta.getTargetTableName(), currTableMeta.getTopicName(),(System.currentTimeMillis() - startTime));
                     } else {
                         log.warn("skip dump origin data,tableName:{},dbName:{},esIndex:{},topicName:{}",
                                 currTableMeta.getTableName(), currTableMeta.getDbName(), currTableMeta.getTargetTableName(), currTableMeta.getTopicName());

@@ -89,20 +89,25 @@ public class MysqlDumpTransformImpl implements DumpTransform {
         List<CudRequest> requestList = new ArrayList<>();
         if(line.startsWith(SQL_START_FLAG))
         {
-            MySqlStatementParser parser = new MySqlStatementParser(line);
-            SQLStatement statement = parser.parseStatement();
-            MySqlInsertStatement insert = (MySqlInsertStatement)statement;
+            try{
+                MySqlStatementParser parser = new MySqlStatementParser(line);
+                SQLStatement statement = parser.parseStatement();
+                MySqlInsertStatement insert = (MySqlInsertStatement)statement;
 
-            for(SQLInsertStatement.ValuesClause values:insert.getValuesList()){
-                CudRequest cudRequest = new CudRequest();
-                cudRequest.setPkValueStr(getDocId(values,tableMeta));
-                cudRequest.setDmlType(INSERT);
-                Map<String, Object> parameterMap = getInsertParameters(values,tableMeta);
-                cudRequest.setParameters(parameterMap);
-                cudRequest.setTableMeta(tableMeta);
-                Object shardingValue = parameterMap.get(tableMeta.getShardingKey());
-                cudRequest.setTable(DynamicDataAssign.getDynamicTableName(shardingValue,tableMeta));
-                requestList.add(cudRequest);
+                for(SQLInsertStatement.ValuesClause values:insert.getValuesList()){
+                    CudRequest cudRequest = new CudRequest();
+                    cudRequest.setPkValueStr(getDocId(values,tableMeta));
+                    cudRequest.setDmlType(INSERT);
+                    Map<String, Object> parameterMap = getInsertParameters(values,tableMeta);
+                    cudRequest.setParameters(parameterMap);
+                    cudRequest.setTableMeta(tableMeta);
+                    Object shardingValue = parameterMap.get(tableMeta.getShardingKey());
+                    cudRequest.setTable(DynamicDataAssign.getDynamicTableName(shardingValue,tableMeta));
+                    requestList.add(cudRequest);
+                }
+            }catch (Exception e){
+                //TODO告警
+                log.error("parse sql error:{}",line,e);
             }
         }
         return requestList;

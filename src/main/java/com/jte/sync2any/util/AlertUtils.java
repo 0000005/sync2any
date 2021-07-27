@@ -12,22 +12,15 @@ import java.util.Map;
  */
 @Slf4j
 public class AlertUtils {
-    private static String url = "https://sc.ftqq.com/";
+    private static String url = "http://ticket.jintiane.cn/notify.php";
+    private static String sendkey = "jte";
 
-    public static void sendAlert(String secret, String text) {
-        if (secret.contains(",")) {
-            String[] secretArray = secret.split(",");
-            for (String s : secretArray) {
-                Map<String, Object> param = new HashMap<>();
-                param.put("text", text);
-                String content = HttpUtil.get(url + s + ".send", param);
-                log.warn("send msg result:{}", content);
-            }
-        } else {
-            Map<String, Object> param = new HashMap<>();
-            param.put("text", text);
-            String content = HttpUtil.get(url + secret + ".send", param);
-            log.warn("send msg result:{}", content);
-        }
+    public static void sendAlert(String touid, String text) {
+        Map<String, Object> param = new HashMap<>();
+        param.put("sendkey", sendkey);
+        param.put("touid", touid);
+        param.put("text", text);
+        String content = HttpUtil.get(url, param);
+        log.warn("send msg result:{}", content);
     }
 }

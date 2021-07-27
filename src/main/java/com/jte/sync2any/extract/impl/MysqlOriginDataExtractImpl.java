@@ -10,6 +10,7 @@ import com.jte.sync2any.model.mysql.TableMeta;
 import com.jte.sync2any.util.DbUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.buildobjects.process.ProcBuilder;
 import org.buildobjects.process.ProcResult;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,7 +45,7 @@ public class MysqlOriginDataExtractImpl implements OriginDataExtract {
     Sync2any sync2any;
 
     /**
-     *
+     * 每次只dump一个表
      * example: mysqldump -h192.168.10.203 -uroot -pxyz11111111 -t -c --compact --single-transaction --databases jte_pms_member > /tmp/member.data.sql
      * @param tableMeta
      * @return
@@ -66,9 +67,14 @@ public class MysqlOriginDataExtractImpl implements OriginDataExtract {
             dbConn =jdbcTemplate.getDataSource().getConnection();
             String dbUrl=dbConn.getMetaData().getURL();
             Map<String,String> dbParam=DbUtils.getParamFromUrl(dbUrl);
-            String filePath=System.getProperty("java.io.tmpdir")+File.separator+tableMeta.getDbName()+"_"+tableMeta.getTableName()+"_"+new SecureRandom().nextInt(99999)+".data.sql";
-            File sqlFile= new File(filePath);
+            String baseFilePath=sync2any.getMysqldumpDataLocation();
+            if(StringUtils.isBlank(baseFilePath)){
+                baseFilePath = System.getProperty("java.io.tmpdir");
+            }
+            String filePath = baseFilePath+File.separator+tableMeta.getDbName()+"_"+tableMeta.getTableName()+"_"+new SecureRandom().nextInt(99999)+".data.sql";
+
             log.info("正在dump数据，表：{}，sql文件：{}",tableMeta.getTableName(),filePath);
+            File sqlFile= new File(filePath);
             ProcBuilder builder = new ProcBuilder(sync2any.getMysqldump());
             builder.withArg("-h"+dbParam.get("host"));
             builder.withArg("-P"+dbParam.get("port"));
@@ -82,8 +88,8 @@ public class MysqlOriginDataExtractImpl implements OriginDataExtract {
             builder.withArgs("--databases",tableMeta.getDbName());
             builder.withArgs("--tables",tableMeta.getTableName());
             builder.withOutputConsumer(stream -> FileUtils.copyToFile(stream,sqlFile));
-            //30分钟超时
-            builder.withTimeoutMillis(1000*60*30);
+            //120分钟超时
+            builder.withTimeoutMillis(1000*60*120);
             ProcResult result=builder.run();
             long sizeInBytes = FileUtils.sizeOf(sqlFile);
             log.info("表{} dump完毕！size:{}mb",tableMeta.getTableName(),sizeInBytes/1024/1024);

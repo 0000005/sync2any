@@ -181,7 +181,7 @@ public class RuleConfigParser {
 
 
     public static String getTableNameFromDdl(String ddlSql){
-        final String dbType = JdbcConstants.MYSQL;
+        final String dbType = JdbcConstants.MYSQL.name();
         List<SQLStatement> stmtList = SQLUtils.parseStatements(ddlSql, dbType);
         MySqlCreateTableStatement stmt = (MySqlCreateTableStatement) stmtList.get(0);
         return ColumnUtils.delEscape(stmt.getTableSource().getName().getSimpleName());
