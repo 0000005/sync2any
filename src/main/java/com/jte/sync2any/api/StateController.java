@@ -81,7 +81,7 @@ public class StateController {
         if(StringUtils.isBlank(topicName)||StringUtils.isBlank(sourceDbId)||StringUtils.isBlank(topicGroup)||offset==null){
             return "param error";
         }
-        SyncConfig syncConfig = sync2any.findSyncConfigByTopicName(topicName);
+        SyncConfig syncConfig = sync2any.findSyncConfigByTopicGroup(topicGroup);
         Mq mq = syncConfig.getMq();
         //停止当前的消费者
         KafkaMessageListenerContainer container = KafkaMsgListener.stopListener(topicName,topicGroup,sourceDbId, new RuntimeException("reset kafka offset"));

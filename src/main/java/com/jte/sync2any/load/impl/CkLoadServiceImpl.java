@@ -236,7 +236,7 @@ public class CkLoadServiceImpl extends AbstractLoadService {
                     Object value = paramMap.get(c.getTargetColumnName());
                     int dataType = c.getDataType();
                     if (Objects.isNull(value)) {
-                        return columnIsNumber(dataType)?"0":"''";
+                        return columnIsNumber(dataType)?"0":"null";
                     } else if (columnIsNumber(dataType)) {
                         return value.toString();
                     } else {
@@ -263,7 +263,7 @@ public class CkLoadServiceImpl extends AbstractLoadService {
                     Field field = row.getFields().stream().filter(e -> e.getName().equalsIgnoreCase(c.getColumnName())).findFirst().orElse(null);
                     int dataType = c.getDataType();
                     if (Objects.isNull(field.getValue())) {
-                        return columnIsNumber(dataType)?"0":"''";
+                        return columnIsNumber(dataType)?"0":"null";
                     } else if (columnIsNumber(dataType)) {
                         return field.getValue().toString();
                     } else {

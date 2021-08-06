@@ -29,7 +29,7 @@ public class AlarmConfig {
     public void startMonitor() {
         log.warn("！！！！！！！！start monitor ！！！！！！！！！");
         Alert alertConf = sync2any.getAlert();
-        if (Objects.isNull(alertConf) || StringUtils.isBlank(alertConf.getSecret())) {
+        if (Objects.isNull(alertConf) || StringUtils.isBlank(alertConf.getTouid())) {
             log.warn("！！！！！！！！建议使用“SERVER酱”进行监控告警！！！！！！！！！");
         } else {
             executor.scheduleWithFixedDelay(new MonitorTask(RULES_MAP.asMap(), sync2any), 5, LOOP_WAITING_TIME, TimeUnit.SECONDS);

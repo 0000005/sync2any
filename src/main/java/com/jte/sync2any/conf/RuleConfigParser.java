@@ -198,7 +198,7 @@ public class RuleConfigParser {
             log.error("请至少填写一个sync-config-list配置");
             System.exit(500);
         }
-        Set<String> topicNameSet = new HashSet<>();
+        Set<String> topicGroupSet = new HashSet<>();
         sync2any.getSyncConfigList().forEach(s->{
             if(StringUtils.isBlank(s.getSourceDbId()))
             {
@@ -215,12 +215,17 @@ public class RuleConfigParser {
                 log.error("请填写sync-config-list下的topic-name配置项！");
                 System.exit(500);
             }
-            else if(topicNameSet.contains(s.getMq().getTopicName())){
+            if(StringUtils.isBlank(s.getMq().getTopicGroup()))
+            {
+                log.error("请填写sync-config-list下的topic-group配置项！");
+                System.exit(500);
+            }
+            else if(topicGroupSet.contains(s.getMq().getTopicGroup())){
                 //因为要通过topicName来区分不同的任务。
-                log.error("禁止多个任务监听同一个topic！");
+                log.error("禁止多个同步任务使用同一个topicGroup！");
                 System.exit(500);
             }else{
-                topicNameSet.add(s.getMq().getTopicName());
+                topicGroupSet.add(s.getMq().getTopicGroup());
             }
         });
     }

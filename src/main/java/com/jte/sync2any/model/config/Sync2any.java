@@ -28,17 +28,17 @@ public class Sync2any {
     private Alert alert;
 
     /**
-     * 通过topicName来找sync-config-list中的配置
-     * @param topicName
+     * 通过topicGroup来找sync-config-list中的配置
+     * @param topicGroup
      */
-    public SyncConfig findSyncConfigByTopicName(String topicName)
+    public SyncConfig findSyncConfigByTopicGroup(String topicGroup)
     {
-        if(StringUtils.isBlank(topicName))
+        if(StringUtils.isBlank(topicGroup))
         {
             return null;
         }
         SyncConfig syncConfig=this.getSyncConfigList().stream()
-                .filter(e->topicName.equals(e.getMq().getTopicName()))
+                .filter(e->topicGroup.equals(e.getMq().getTopicGroup()))
                 .findFirst()
                 .orElse(null);
         return syncConfig;

@@ -50,7 +50,7 @@ public class MonitorTask implements Runnable {
         currentErrorTopicAlertTimeGap = currentErrorTopicAlertTimeGap + LOOP_WAITING_TIME;
         if (currentErrorTopicAlertTimeGap > errorTopicAlertTimeGap) {
             if (!ERROR_TOPIC_LIST.isEmpty()) {
-                AlertUtils.sendAlert(sync2any.getAlert().getSecret(), "发现有消息同步失败:" + ERROR_TOPIC_LIST.toString());
+                AlertUtils.sendAlert(sync2any.getAlert().getTouid(), "发现有消息同步失败:" + ERROR_TOPIC_LIST.toString());
                 ERROR_TOPIC_LIST.clear();
             }
             //置空重新计时
@@ -87,7 +87,7 @@ public class MonitorTask implements Runnable {
                 //意外停止
                 if (currTableMeta.getState().equals(SyncState.STOPPED)) {
                     String msg = assembleAlertParam(currTableMeta, "意外停止同步", currTableMeta.getErrorReason());
-                    AlertUtils.sendAlert(sync2any.getAlert().getSecret(), msg);
+                    AlertUtils.sendAlert(sync2any.getAlert().getTouid(), msg);
                     currTableMeta.setLastAlarmTime(System.currentTimeMillis());
                     continue;
                 }
@@ -108,7 +108,7 @@ public class MonitorTask implements Runnable {
                 long idleTimeInMinute = idle / 1000 / 60;
                 if (maxIdleInMinute != -1 && idleTimeInMinute > maxIdleInMinute) {
                     String msg = assembleAlertParam(currTableMeta, "空闲时间超过阈值，", String.valueOf(idleTimeInMinute * 60));
-                    AlertUtils.sendAlert(sync2any.getAlert().getSecret(), msg);
+                    AlertUtils.sendAlert(sync2any.getAlert().getTouid(), msg);
                     currTableMeta.setLastAlarmTime(System.currentTimeMillis());
                     continue;
                 }
@@ -124,7 +124,7 @@ public class MonitorTask implements Runnable {
                     String topicName = e.split(",")[1];
                     List<TableMeta> tableMetaList = RuleConfigParser.getTableMetaListByMq(topicName,topicGroup);
                     String tableNames = tableMetaList.stream().map(TableMeta::getTableName).collect(Collectors.joining(","));
-                    AlertUtils.sendAlert(sync2any.getAlert().getSecret(), "数据同步延迟超过阈值。队列："+topicName+"，消费组："+topicGroup+"，影响的源表："+tableNames);
+                    AlertUtils.sendAlert(sync2any.getAlert().getTouid(), "数据同步延迟超过阈值。队列："+topicName+"，消费组："+topicGroup+"，影响的源表："+tableNames);
                 });
 
         //检查延迟是否已经恢复
@@ -147,7 +147,7 @@ public class MonitorTask implements Runnable {
             //如果每一个表都没问题，那么则认为已经恢复
             if(delayCount == 0){
                 it.remove();
-                AlertUtils.sendAlert(sync2any.getAlert().getSecret(), "数据同步延迟已经恢复。队列："+topicName+"，消费组："+topicGroup);
+                AlertUtils.sendAlert(sync2any.getAlert().getTouid(), "数据同步延迟已经恢复。队列："+topicName+"，消费组："+topicGroup);
             }
         }
     }

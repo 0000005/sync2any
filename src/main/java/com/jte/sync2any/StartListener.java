@@ -77,7 +77,9 @@ public class StartListener {
         }
         for (String key : tableRules.keySet()) {
             TableMeta currTableMeta = tableRules.get(key);
-            System.out.println("dbName:" + currTableMeta.getDbName() + ",tableName:" + currTableMeta.getTableName() + ",table:" + currTableMeta.getTargetTableName() + ",topicName:" + currTableMeta.getTopicName());
+            System.out.println("key:"+key+",dbName:" + currTableMeta.getDbName() + ",tableName:" +
+                    currTableMeta.getTableName() + ",table:" + currTableMeta.getTargetTableName() +
+                    ",topicName:" + currTableMeta.getTopicName()+ ",topicGroup:" + currTableMeta.getTopicGroup());
         }
         System.out.println("=======================start river===========================");
         for (String key : tableRules.keySet()) {

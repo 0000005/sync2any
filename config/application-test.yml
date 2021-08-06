@@ -36,13 +36,9 @@ sync2any:
       #【必填】要同步的TDSQL数据库名称
       db-name: member
       #【必填】要同步的表名，支持正则表达式，多个表名用逗号分隔
-      sync-tables: "t_member,t_member_order_[0-9]{10}"
-      #【选填】延迟超过60秒，将会触发告警
-      max-delay-in-second: 60
-      #【选填】超过120分钟没接收到同步消息，将会触发告警
-      max-idle-in-minute: 120
-      #【选填】告警发生180分钟后，如果未恢复，则再次告警
-      next-trigger-alert-in-minute: 180
+      sync-tables: "t_pms_checkin_log,t_pms_business_log,t_pms_account_log,t_pms_booking_log,t_pms_room_log,t_pms_unusual_log,t_pms_checkout_log,t_pms_member_log,t_pms_guest_log,t_pms_param_setting_log,t_pms_print_log,t_pms_sys_setting,t_pms_intermediary_log,t_pms_tour_team_log,t_pms_points_exchange_log,t_pms_lock_log,t_pms_clean_room_log,t_pms_buy_log,t_pms_approval_log,t_pms_agreement_unit_log,t_pms_pricesys_log,t_pms_ota_log,t_pms_metereading_log,t_pms_member_config_log,t_pms_log_table_sample,t_pms_housekeeping_audit_log,t_pms_constant_type_log,t_pms_commission_log,t_pms_commission_detail_log,t_pms_blacklist_log,t_pms_batch_import_log,t_pms_agreement_unit_price_strategy_log"
+      #【选填】是否载入原始数据（0否，1是；默认开启【1】）
+      dump-origin-data: 1
       mq:
         # 监听的CKAFKA的topic名称
         topic-name: test-t_member

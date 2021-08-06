@@ -5,6 +5,7 @@ import com.jte.sync2any.MonitorTask;
 import com.jte.sync2any.conf.KafkaConfig;
 import com.jte.sync2any.conf.RuleConfigParser;
 import com.jte.sync2any.load.AbstractLoadService;
+import com.jte.sync2any.model.config.Mq;
 import com.jte.sync2any.model.config.Sync2any;
 import com.jte.sync2any.model.config.SyncConfig;
 import com.jte.sync2any.model.core.SyncState;
@@ -37,6 +38,7 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String, by
 
     public static final int MAX_RETRY_TIMES = 3;
 
+    private Mq mq;
     private Sync2any sync2any;
     private RecordsTransform transform;
     private RuleConfigParser ruleConfigParser;
@@ -50,7 +52,9 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String, by
 
     private HashMap<String, ByteArrayOutputStream> shardMsgMap = new HashMap<>();
 
-    public KafkaMsgListener(RecordsTransform transform, Sync2any sync2any, RuleConfigParser ruleConfigParser) {
+    public KafkaMsgListener(Mq mq, RecordsTransform transform, Sync2any sync2any, RuleConfigParser ruleConfigParser) {
+        log.warn("new KafkaMsgListener topicGroup:{}",mq.getTopicGroup());
+        this.mq = mq;
         this.transform = transform;
         this.sync2any = sync2any;
         this.ruleConfigParser = ruleConfigParser;
@@ -102,7 +106,7 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String, by
                     //发现新表，尝试添加到RULES_MAP中。
                     SubscribeDataProto.DDLEvent ddlEvent = entry.getEvent().getDdlEvent();
                     log.warn("new ddl shardId:{} , schema:{} , sql:{} , RULES_MAP size:{}", getShardId(data), ddlEvent.getSchemaName(), ddlEvent.getSql(), RuleConfigParser.RULES_MAP.size());
-                    if(!ddlEvent.getSql().startsWith("CREATE TABLE")){
+                    if (!ddlEvent.getSql().startsWith("CREATE TABLE")) {
                         log.info("Ignore unsupported ddl type");
                         return;
                     }
@@ -110,7 +114,7 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String, by
                     List<SyncConfig> configList = ruleConfigParser.getSysConfigBySourceDbName(ddlEvent.getSchemaName());
                     if (Objects.nonNull(configList) && configList.size() > 0) {
                         List<TableMeta> tableMetaList = ruleConfigParser.initRules(configList, newTableName);
-                        tableMetaList.forEach(t->{
+                        tableMetaList.forEach(t -> {
                             t.setState(SyncState.SYNCING);
                         });
                     }
@@ -143,12 +147,12 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String, by
                     , dmlType.toString(), dbName, tableName, topicName, dmlEvt.getRowsList().size());
 
             //从topicName中匹配源数据库
-            SyncConfig syncConfig = sync2any.findSyncConfigByTopicName(topicName);
-
+            SyncConfig syncConfig = sync2any.findSyncConfigByTopicGroup(mq.getTopicGroup());
+            String ruleKey = syncConfig.getSourceDbId() + "$" + tableName.toLowerCase();
             TableMeta tableMeta = RuleConfigParser.RULES_MAP
-                    .getIfPresent(syncConfig.getSourceDbId() + "$" + tableName.toLowerCase());
+                    .getIfPresent(ruleKey);
             if (Objects.isNull(tableMeta)) {
-                log.warn("tableMeta not found when receive msg from mq. this msg will be ignored. db:{}.{}", dbName, tableName);
+                log.warn("tableMeta not found when receive msg from mq. this msg will be ignored. db:{}.{} ruleKey:{} topicGroup:{}", dbName, tableName ,ruleKey,mq.getTopicGroup());
                 return;
             }
 

@@ -106,9 +106,9 @@ sync2any:
       #【选填】是否载入原始数据（0否，1是；默认开启【1】）
       dump-origin-data: 0
       mq:
-        # 监听的CKAFKA的topic名称（在这整个应用中，多个同步任务不可以监听通一个topic）
+        # 监听的CKAFKA的topic名称
         topic-name: test-t_member
-        #【选填】消费者使用的topicGroup，如果不填写，则随机生成。每次重启本应用都会从kafka的"earliest"处开始读取。
+        #消费者使用的topicGroup。每次重启本应用都会从kafka的"earliest"处开始读取。（多个同步任务不可以使用同一个topicGroup）
         topic-group: local-test-consumer-group
         #mq帐号
         username: test
@@ -150,6 +150,7 @@ sync2any:
 - sync2any会将数据库中的主键当作es中document的主键。碰到复合主键时，多个主键使用“_”符号隔开。
 - 在es中的更新和删除操作都是通过es的主键来定位document
 - 因为在同步原始数据前队列中会堆积消息（binlog），这意味着我们会重复消费到以前的binlog。此时要求update不能修改主键值，否则重复消费binlog时可能导致消息错乱。
+- 当目标数据库的表引擎为CollapsingMergeTree系列时需默认追加_sign列。
 
 
 ### 最佳实践

@@ -58,7 +58,7 @@ public class KafkaConfig {
     }
 
     public KafkaMessageListenerContainer<String, byte[]> createContainer(Mq mq, Long offset,String sourceDbId) {
-
+        log.warn("createContainer topicGroup:{},sourceDbId:{}",mq.getTopicGroup(),sourceDbId);
         ContainerProperties containerProps = null;
         if (Objects.isNull(offset)) {
             containerProps = new ContainerProperties(mq.getTopicName());
@@ -72,7 +72,7 @@ public class KafkaConfig {
         containerProps.setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
         //异步提交
         containerProps.setSyncCommits(false);
-        containerProps.setMessageListener(new KafkaMsgListener(transform, sync2any, ruleConfigParser));
+        containerProps.setMessageListener(new KafkaMsgListener(mq,transform, sync2any, ruleConfigParser));
 
         Map<String, Object> props = consumerProps(mq);
         DefaultKafkaConsumerFactory<String, byte[]> cf = new DefaultKafkaConsumerFactory<>(props);
