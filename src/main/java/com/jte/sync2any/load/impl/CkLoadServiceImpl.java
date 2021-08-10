@@ -1,6 +1,5 @@
 package com.jte.sync2any.load.impl;
 
-import cn.hutool.core.io.file.FileWriter;
 import cn.hutool.db.DbUtil;
 import cn.hutool.db.GlobalDbConfig;
 import cn.hutool.db.handler.NumberHandler;
@@ -21,10 +20,8 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import javax.sql.DataSource;
-import java.io.File;
-import java.security.SecureRandom;
 import java.sql.Connection;
-import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Types;
 import java.util.*;
 import java.util.concurrent.Executors;
@@ -126,7 +123,7 @@ public class CkLoadServiceImpl extends AbstractLoadService {
      * @return
      */
     public int batchAdd(List<CudRequest> requestList, boolean isForce) {
-        log.debug("ck batchAdd requestList size:{} isForce:{}",requestList.size(),isForce);
+        log.info("ck batchAdd requestList size:{} isForce:{}",requestList.size(),isForce);
         //总待入库的请求为空而且当前待入库的请求为空，则直接返回结束
         if(batchAddQueue.isEmpty() && requestList.isEmpty()){
             return 0;
@@ -166,7 +163,7 @@ public class CkLoadServiceImpl extends AbstractLoadService {
 
         DataSource ds = (DataSource) allTargetDatasource.get(tableMeta.getTargetDbId());
         saveToCk(sql,ds);
-        log.debug("batch save size:{} table:{}",batchAddQueueSize,tableMeta.getTargetTableName());
+        log.info("batch save size:{} table:{}",batchAddQueueSize,tableMeta.getTargetTableName());
         //清空缓冲数组
         batchAddQueue.clear();
 
@@ -304,7 +301,9 @@ public class CkLoadServiceImpl extends AbstractLoadService {
                 int currentQueueSize = new Integer(saveQueue.size());
                 //每次最多1万
                 currentQueueSize = currentQueueSize > 10000 ? 10000 : currentQueueSize;
-                log.debug("ck currentQueueSize:{}", currentQueueSize);
+                if(currentQueueSize > 0){
+                    log.info("ck currentQueueSize:{}", currentQueueSize);
+                }
                 for (int i = 0; i < currentQueueSize; i++) {
                     InsertItem insertItem = saveQueue.poll();
                     if (Objects.isNull(insertItem)) {
@@ -320,7 +319,9 @@ public class CkLoadServiceImpl extends AbstractLoadService {
                     }
                 }
                 Set<TableMeta> tableMetaSet = dataMap.keySet();
-                log.debug("ck tableMetaSize:{}", tableMetaSet.size());
+                if(tableMetaSet.size() > 0){
+                    log.info("ck tableMetaSize:{}", tableMetaSet.size());
+                }
                 //分组生成完整的insert语句
                 for (TableMeta tableMeta : tableMetaSet) {
                     String sql = generateCompleteInsertSql(tableMeta,dataMap.get(tableMeta));
@@ -367,19 +368,43 @@ public class CkLoadServiceImpl extends AbstractLoadService {
      * @param ds
      * @return
      */
-    public int saveToCk(String sql, DataSource ds) {
-        Connection conn = null;
+//    public int saveToCk(String sql, DataSource ds) {
+//        Connection conn = null;
+//        try {
+//            conn = ds.getConnection();
+//            return SqlExecutor.execute(conn, sql);
+//        } catch (SQLException e) {
+//            log.error("execute sql error:", e);
+//            String filePath=System.getProperty("java.io.tmpdir")+File.separator+new SecureRandom().nextInt(9999999)+".error.sql";
+//            FileWriter writer = new FileWriter(filePath);
+//            writer.write(sql);
+//            throw new ShouldNeverHappenException("execute sql error,error sql:"+filePath);
+//        } finally {
+//            DbUtil.close(conn);
+//        }
+//    }
+
+
+    /**
+     * 持久化
+     *
+     * @param sql
+     * @param ds
+     * @return
+     */
+    public long saveToCk(String sql, DataSource ds) {
+        Connection connection = null;
+        Statement stmt = null;
         try {
-            conn = ds.getConnection();
-            return SqlExecutor.execute(conn, sql);
-        } catch (SQLException e) {
-            log.error("execute sql error:", e);
-            String filePath=System.getProperty("java.io.tmpdir")+File.separator+new SecureRandom().nextInt(9999999)+".error.sql";
-            FileWriter writer = new FileWriter(filePath);
-            writer.write(sql);
-            throw new ShouldNeverHappenException("execute sql error,error sql:"+filePath);
+            connection = ds.getConnection();
+            connection.setAutoCommit(true);
+            stmt = connection.createStatement();
+            return stmt.executeUpdate(sql);
+        } catch (Exception e) {
+            log.error("saveToCk error",e);
+            throw new ShouldNeverHappenException(e);
         } finally {
-            DbUtil.close(conn);
+            DbUtil.close(stmt,connection);
         }
     }
 

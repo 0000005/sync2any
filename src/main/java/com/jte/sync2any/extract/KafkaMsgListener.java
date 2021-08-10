@@ -152,7 +152,7 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String, by
             TableMeta tableMeta = RuleConfigParser.RULES_MAP
                     .getIfPresent(ruleKey);
             if (Objects.isNull(tableMeta)) {
-                log.warn("tableMeta not found when receive msg from mq. this msg will be ignored. db:{}.{} ruleKey:{} topicGroup:{}", dbName, tableName ,ruleKey,mq.getTopicGroup());
+                log.debug("tableMeta not found when receive msg from mq. this msg will be ignored. db:{}.{} ruleKey:{} topicGroup:{}", dbName, tableName ,ruleKey,mq.getTopicGroup());
                 return;
             }
 

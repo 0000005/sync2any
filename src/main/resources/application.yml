@@ -17,5 +17,3 @@ logging:
   level:
     root: info
     com.jte: info
-    com.jte.sync2any.load.impl.CkLoadServiceImpl: debug
-    com.jte.sync2any.model.mysql.TableRecords: debug
