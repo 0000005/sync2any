@@ -21,7 +21,7 @@ import org.springframework.stereotype.Service;
 import javax.annotation.Resource;
 import javax.sql.DataSource;
 import java.sql.Connection;
-import java.sql.Statement;
+import java.sql.PreparedStatement;
 import java.sql.Types;
 import java.util.*;
 import java.util.concurrent.Executors;
@@ -43,14 +43,24 @@ public class CkLoadServiceImpl extends AbstractLoadService {
     /**
      * INSERT INTO a (x, y, z, pk) VALUES (?, ?, ?, ?),(?, ?, ?, ?),(?, ?, ?, ?)
      */
-    private static final String INSERT_SQL_COLUMNS_TEMPLATE = "INSERT INTO %s (%s) VALUES ";
+    private static final String INSERT_SQL_COLUMNS_TEMPLATE = "INSERT INTO %s (%s) VALUES (%s)";
 
     /**
      * SELECT count(*) FROM a;
      */
     private static final String COUNT_SQL_TEMPLATE = "SELECT COUNT(*) FROM %s ";
 
-    private final String CMT_ENGINE="CollapsingMergeTree";
+    private final String CMT_ENGINE = "CollapsingMergeTree";
+
+    /**
+     * 每次执行定时任务最大的处理数量
+     */
+    private final int maxHandleNumPerTask = 20000;
+
+    /**
+     * 每次批量新增任务最大的处理数量
+     */
+    private final int maxHandleNumPerBatchAdd = 50000;
 
     @Resource
     Map<String, Object> allTargetDatasource;
@@ -85,6 +95,7 @@ public class CkLoadServiceImpl extends AbstractLoadService {
     /**
      * 此处参数只管往缓冲数组中追加数据（有顺序），并不负责实际的持久化。
      * CollapsingMergeTree系列引擎都默认加sign，其他表引擎只支持新增
+     *
      * @param cudRequest
      * @return
      */
@@ -94,16 +105,16 @@ public class CkLoadServiceImpl extends AbstractLoadService {
         TableMeta tableMeta = cudRequest.getTableMeta();
         boolean isCollapsingMergeTree = tableMeta.getCkTableEngine().contains(CMT_ENGINE);
         if (INSERT == cudRequest.getDmlType()) {
-            String valuesSql = buildSingleValuesByRow(records.getNewRows().get(0), tableMeta, isCollapsingMergeTree ? "1" : null);
-            saveQueue.add(new InsertItem(tableMeta, valuesSql));
+            List<Object> valueList = buildSingleValuesByRow(records.getNewRows().get(0), tableMeta, isCollapsingMergeTree ? "1" : null);
+            saveQueue.add(new InsertItem(tableMeta, valueList));
         } else if (UPDATE == cudRequest.getDmlType() && isCollapsingMergeTree) {
-            String valuesSqlOld = buildSingleValuesByRow(records.getOldRows().get(0), tableMeta, isCollapsingMergeTree ? "-1" : null);
-            String valuesSqlNew = buildSingleValuesByRow(records.getNewRows().get(0), tableMeta, isCollapsingMergeTree ? "1" : null);
-            saveQueue.add(new InsertItem(tableMeta, valuesSqlOld));
-            saveQueue.add(new InsertItem(tableMeta, valuesSqlNew));
+            List<Object> oldValueList = buildSingleValuesByRow(records.getOldRows().get(0), tableMeta, isCollapsingMergeTree ? "-1" : null);
+            List<Object> newValueList = buildSingleValuesByRow(records.getNewRows().get(0), tableMeta, isCollapsingMergeTree ? "1" : null);
+            saveQueue.add(new InsertItem(tableMeta, oldValueList));
+            saveQueue.add(new InsertItem(tableMeta, newValueList));
         } else if (DELETE == cudRequest.getDmlType() && isCollapsingMergeTree) {
-            String valuesSql = buildSingleValuesByRow(records.getOldRows().get(0), tableMeta, isCollapsingMergeTree ? "-1" : null);
-            saveQueue.add(new InsertItem(tableMeta, valuesSql));
+            List<Object> valueList = buildSingleValuesByRow(records.getOldRows().get(0), tableMeta, isCollapsingMergeTree ? "-1" : null);
+            saveQueue.add(new InsertItem(tableMeta, valueList));
         } else {
             log.warn("found unknown operation type({}) when loading. engine:{} table:{}", cudRequest.getDmlType(), tableMeta.getCkTableEngine(), tableMeta.getTargetTableName());
         }
@@ -112,58 +123,59 @@ public class CkLoadServiceImpl extends AbstractLoadService {
 
     @Override
     public int batchAdd(List<CudRequest> requestList) {
-        return batchAdd(requestList,false);
+        return batchAdd(requestList, false);
     }
 
     /**
      * TODO 暂不支持dynamic_tablename_assigner分发到多个表
      * 批量新增
+     *
      * @param requestList
-     * @param isForce 是否强制入库
+     * @param isForce     是否强制入库
      * @return
      */
     public int batchAdd(List<CudRequest> requestList, boolean isForce) {
-        log.info("ck batchAdd requestList size:{} isForce:{}",requestList.size(),isForce);
+        log.info("ck batchAdd requestList size:{} isForce:{}", requestList.size(), isForce);
         //总待入库的请求为空而且当前待入库的请求为空，则直接返回结束
-        if(batchAddQueue.isEmpty() && requestList.isEmpty()){
+        if (batchAddQueue.isEmpty() && requestList.isEmpty()) {
             return 0;
         }
         //非强制入库且当前待入库的请求为空，则直接返回结束
-        if(requestList.isEmpty() && !isForce){
+        if (requestList.isEmpty() && !isForce) {
             return 0;
         }
         //强制入库，但总待入库和当前待入库的请求都为空，则直接返回结束
-        if(batchAddQueue.isEmpty() && requestList.isEmpty() && isForce){
+        if (batchAddQueue.isEmpty() && requestList.isEmpty() && isForce) {
             return 0;
         }
-        requestList.stream().parallel().forEach((request ->{
+        requestList.stream().parallel().forEach((request -> {
             TableMeta tableMeta = request.getTableMeta();
             boolean isCollapsingMergeTree = tableMeta.getCkTableEngine().contains(CMT_ENGINE);
-            String valuesSql = buildSingleValuesByReq(request, tableMeta, isCollapsingMergeTree ? "1" : null);
-            batchAddQueue.add(new InsertItem(tableMeta, valuesSql));
-        } ));
+            List<Object> valueList = buildSingleValuesByReq(request, tableMeta, isCollapsingMergeTree ? "1" : null);
+            batchAddQueue.add(new InsertItem(tableMeta, valueList));
+        }));
 
-        if(!requestList.isEmpty()){
-            lastBatchAddTableMeta=requestList.get(0).getTableMeta();
+        if (!requestList.isEmpty()) {
+            lastBatchAddTableMeta = requestList.get(0).getTableMeta();
         }
 
         //每超过N行记录入库一次
-        if(batchAddQueue.size()<10000 && !isForce){
+        if (batchAddQueue.size() < maxHandleNumPerBatchAdd && !isForce) {
             return 0;
         }
         //////////////////////开始真正入库/////////////////////////
-        List<String> valueList = new ArrayList<>();
+        List<Object> valueList = new ArrayList<>();
         int batchAddQueueSize = batchAddQueue.size();
-        for(int i =0;i<batchAddQueueSize;i++){
-            valueList.add(batchAddQueue.poll().getValuesSql());
+        for (int i = 0; i < batchAddQueueSize; i++) {
+            valueList.addAll(batchAddQueue.poll().getValueList());
         }
 
         TableMeta tableMeta = lastBatchAddTableMeta;
-        String sql = generateCompleteInsertSql(tableMeta,valueList);
+        String sql = generateCompleteInsertSql(tableMeta, valueList);
 
         DataSource ds = (DataSource) allTargetDatasource.get(tableMeta.getTargetDbId());
-        saveToCk(sql,ds);
-        log.info("batch save size:{} table:{}",batchAddQueueSize,tableMeta.getTargetTableName());
+        saveToCk(sql, ds, valueList, batchAddQueueSize);
+        log.info("batch save size:{} table:{}", batchAddQueueSize, tableMeta.getTargetTableName());
         //清空缓冲数组
         batchAddQueue.clear();
 
@@ -172,30 +184,29 @@ public class CkLoadServiceImpl extends AbstractLoadService {
 
     @Override
     public int flushBatchAdd() {
-        return batchAdd(new ArrayList<>(),true);
+        return batchAdd(new ArrayList<>(), true);
     }
 
     @Override
     public Long countData(String dbId, String table) {
-        String key = dbId+"-"+table;
-        Long count= cacheInitCount.get(key);
-        if(Objects.nonNull(count))
-        {
+        String key = dbId + "-" + table;
+        Long count = cacheInitCount.get(key);
+        if (Objects.nonNull(count)) {
             return count;
         }
         DataSource ds = (DataSource) DbUtils.getTargetDsByDbId(allTargetDatasource, dbId);
-        Connection connection=null;
+        Connection connection = null;
         try {
             connection = ds.getConnection();
             String countSql = String.format(COUNT_SQL_TEMPLATE, table);
-            Number n = SqlExecutor.query(connection,countSql, new NumberHandler());
-            count=n.longValue();
-            cacheInitCount.put(key,count);
+            Number n = SqlExecutor.query(connection, countSql, new NumberHandler());
+            count = n.longValue();
+            cacheInitCount.put(key, count);
             return count;
-        }catch (Exception e){
-            log.error("count error:",e);
+        } catch (Exception e) {
+            log.error("count error:", e);
             throw new ShouldNeverHappenException("count error");
-        }finally {
+        } finally {
             DbUtil.close(connection);
         }
     }
@@ -206,76 +217,78 @@ public class CkLoadServiceImpl extends AbstractLoadService {
     }
 
 
-    /**
-     * 构建insert sql语句的列部分
-     *
-     * @param tableMeta
-     * @return
-     */
-    public String buildInsertColumnsSql(TableMeta tableMeta) {
-        String insertColumns = tableMeta.getAllColumnList().stream()
-                .filter(c -> c.isInclude())
-                .map(c -> c.getTargetColumnName())
-                .collect(Collectors.joining(", "));
-        //CollapsingMergeTree系列需默认追加_sign列。
-        if (tableMeta.getCkTableEngine().contains(CMT_ENGINE)) {
-            insertColumns = insertColumns + ",_sign";
-        }
-        return String.format(INSERT_SQL_COLUMNS_TEMPLATE, tableMeta.getTargetTableName(), insertColumns);
-    }
-
-    private String buildSingleValuesByReq(CudRequest request, TableMeta tableMeta, String sign) {
+    private List<Object> buildSingleValuesByReq(CudRequest request, TableMeta tableMeta, String sign) {
         Map<String, Object> paramMap = request.getParameters();
-
-        String insertValues = tableMeta.getAllColumnList().stream()
+        List<Object> valuesList = new ArrayList<>();
+        tableMeta.getAllColumnList().stream()
                 .filter(c -> c.isInclude())
-                .map(c -> {
+                .forEach(c -> {
                     Object value = paramMap.get(c.getTargetColumnName());
                     int dataType = c.getDataType();
                     if (Objects.isNull(value)) {
-                        return columnIsNumber(dataType)?"0":"null";
+                        value = (columnIsNumber(dataType) || columnIsDecimal(dataType)) ? 0 : null;
                     } else if (columnIsNumber(dataType)) {
-                        return value.toString();
+                        value = Long.valueOf(value.toString());
+                    } else if (columnIsDecimal(dataType)) {
+                        value = Double.valueOf(value.toString());
                     } else {
-                        String columnValue = value.toString();
-                        if(columnValue.contains("\\")){
-                            columnValue = columnValue.replace("\\","\\\\");
-                        }
-                        if(columnValue.contains("'")){
-                            columnValue = columnValue.replace("'","\\'");
-                        }
-                        return "'" + columnValue + "'";
+                        value = value.toString();
                     }
-                }).collect(Collectors.joining(", "));
+                    valuesList.add(value);
+                });
         if (StringUtils.isNotBlank(sign)) {
-            insertValues = insertValues + "," + sign;
+            valuesList.add(sign);
         }
-        return insertValues;
+        return valuesList;
     }
 
-    private String buildSingleValuesByRow(Row row, TableMeta tableMeta, String sign) {
-        String insertValues = tableMeta.getAllColumnList().stream()
+    private List<Object> buildSingleValuesByRow(Row row, TableMeta tableMeta, String sign) {
+        List<Object> valuesList = new ArrayList<>();
+        tableMeta.getAllColumnList().stream()
                 .filter(c -> c.isInclude())
-                .map(c -> {
+                .forEach(c -> {
                     Field field = row.getFields().stream().filter(e -> e.getName().equalsIgnoreCase(c.getColumnName())).findFirst().orElse(null);
                     int dataType = c.getDataType();
+                    Object value = null;
                     if (Objects.isNull(field.getValue())) {
-                        return columnIsNumber(dataType)?"0":"null";
+                        value = (columnIsNumber(dataType) || columnIsDecimal(dataType)) ? 0 : null;
                     } else if (columnIsNumber(dataType)) {
-                        return field.getValue().toString();
+                        value = Long.valueOf(field.getValue().toString());
+                    } else if (columnIsDecimal(dataType)) {
+                        value = Double.valueOf(field.getValue().toString());
                     } else {
-                        return "'" + field.getValue().toString() + "'";
+                        value = field.getValue().toString();
                     }
-                }).collect(Collectors.joining(", "));
+                    valuesList.add(value);
+                });
         if (StringUtils.isNotBlank(sign)) {
-            insertValues = insertValues + "," + sign;
+            valuesList.add(sign);
         }
-        return insertValues;
+        return valuesList;
     }
 
 
+    /**
+     * 是否为整数
+     *
+     * @param dataType
+     * @return
+     */
     public boolean columnIsNumber(int dataType) {
-        if (dataType == Types.BIGINT || dataType == Types.INTEGER || dataType == Types.TINYINT || dataType == Types.SMALLINT || dataType == Types.FLOAT || dataType == Types.DOUBLE || dataType == Types.DECIMAL  || dataType == Types.NUMERIC) {
+        if (dataType == Types.BIGINT || dataType == Types.INTEGER || dataType == Types.TINYINT || dataType == Types.SMALLINT || dataType == Types.NUMERIC) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * 是否为小数
+     *
+     * @param dataType
+     * @return
+     */
+    public boolean columnIsDecimal(int dataType) {
+        if (dataType == Types.FLOAT || dataType == Types.DOUBLE || dataType == Types.DECIMAL) {
             return true;
         }
         return false;
@@ -284,11 +297,11 @@ public class CkLoadServiceImpl extends AbstractLoadService {
     @Data
     class InsertItem {
         private TableMeta tableMeta;
-        private String valuesSql;
+        private List<Object> valueList;
 
-        public InsertItem(TableMeta tableMeta, String valuesSql) {
+        public InsertItem(TableMeta tableMeta, List<Object> valueList) {
             this.tableMeta = tableMeta;
-            this.valuesSql = valuesSql;
+            this.valueList = valueList;
         }
     }
 
@@ -296,42 +309,57 @@ public class CkLoadServiceImpl extends AbstractLoadService {
 
         @Override
         public void run() {
-            try{
-                Map<TableMeta, List<String>> dataMap = new HashMap<>();
-                int currentQueueSize = new Integer(saveQueue.size());
-                //每次最多1万
-                currentQueueSize = currentQueueSize > 10000 ? 10000 : currentQueueSize;
-                if(currentQueueSize > 0){
-                    log.info("ck currentQueueSize:{}", currentQueueSize);
-                }
-                for (int i = 0; i < currentQueueSize; i++) {
-                    InsertItem insertItem = saveQueue.poll();
-                    if (Objects.isNull(insertItem)) {
-                        break;
+            try {
+                //如果队列里面一直有元素，则会一直跑。
+                while(saveQueue.size() > 0){
+                    /**
+                     * 获取插入值，按表分组
+                     */
+                    Map<TableMeta, List<Object>> dataMap = new HashMap<>();
+                    /**
+                     * 获取insert数量，按表分组
+                     */
+                    Map<TableMeta, Integer> countMap = new HashMap<>();
+                    int currentQueueSize = new Integer(saveQueue.size());
+                    //每次最多1万
+                    currentQueueSize = currentQueueSize > maxHandleNumPerTask ? maxHandleNumPerTask : currentQueueSize;
+                    if (currentQueueSize > 0) {
+                        log.info("ck currentQueueSize:{}", currentQueueSize);
                     }
-                    List<String> valueList = dataMap.get(insertItem.getTableMeta());
-                    if (Objects.isNull(valueList)) {
-                        valueList = new ArrayList<>();
-                        valueList.add(insertItem.valuesSql);
-                        dataMap.put(insertItem.getTableMeta(), valueList);
-                    } else {
-                        valueList.add(insertItem.valuesSql);
+                    for (int i = 0; i < currentQueueSize; i++) {
+                        InsertItem insertItem = saveQueue.poll();
+                        if (Objects.isNull(insertItem)) {
+                            break;
+                        }
+                        List<Object> valueList = dataMap.get(insertItem.getTableMeta());
+                        Integer count = countMap.get(insertItem.getTableMeta());
+                        if (Objects.isNull(valueList)) {
+                            valueList = new ArrayList<>();
+                            valueList.addAll(insertItem.getValueList());
+                            dataMap.put(insertItem.getTableMeta(), valueList);
+                            countMap.put(insertItem.getTableMeta(), 1);
+                        } else {
+                            valueList.addAll(insertItem.getValueList());
+                            //sql数量加1
+                            countMap.put(insertItem.getTableMeta(), ++count);
+                        }
+                    }
+                    Set<TableMeta> tableMetaSet = dataMap.keySet();
+                    if (tableMetaSet.size() > 0) {
+                        log.info("ck tableMetaSize:{}", tableMetaSet.size());
+                    }
+                    //分组生成完整的insert语句
+                    for (TableMeta tableMeta : tableMetaSet) {
+
+                        String sql = generateCompleteInsertSql(tableMeta, dataMap.get(tableMeta));
+                        //入库
+                        DataSource ds = (DataSource) allTargetDatasource.get(tableMeta.getTargetDbId());
+                        saveToCk(sql, ds, dataMap.get(tableMeta), countMap.get(tableMeta));
                     }
                 }
-                Set<TableMeta> tableMetaSet = dataMap.keySet();
-                if(tableMetaSet.size() > 0){
-                    log.info("ck tableMetaSize:{}", tableMetaSet.size());
-                }
-                //分组生成完整的insert语句
-                for (TableMeta tableMeta : tableMetaSet) {
-                    String sql = generateCompleteInsertSql(tableMeta,dataMap.get(tableMeta));
-                    log.debug("sql:{}", sql);
-                    //入库
-                    DataSource ds = (DataSource) allTargetDatasource.get(tableMeta.getTargetDbId());
-                    saveToCk(sql.toString(), ds);
-                }
-            }catch (Exception e){
-                log.error("定时持久化异常：",e);
+                log.info("execute PersistentTask over.");
+            } catch (Exception e) {
+                log.error("定时持久化异常：", e);
             }
 
         }
@@ -340,50 +368,28 @@ public class CkLoadServiceImpl extends AbstractLoadService {
 
     /**
      * 生成一条完整的insertSql
+     *
      * @param tableMeta
      * @param valuesList
      * @return
      */
-    private String generateCompleteInsertSql(TableMeta tableMeta ,List<String> valuesList){
-        StringBuilder sql = new StringBuilder();
-        //列部分
-        sql.append(buildInsertColumnsSql(tableMeta));
-        log.debug("ck valuesListSize:{}", valuesList.size());
-        //值部分
-        for (int i = 0; i < valuesList.size(); i++) {
-            sql.append("(");
-            sql.append(valuesList.get(i));
-            sql.append(")");
-            if (i != valuesList.size() - 1) {
-                sql.append(",");
-            }
+    private String generateCompleteInsertSql(TableMeta tableMeta, List<Object> valuesList) {
+        String insertColumnNames = tableMeta.getAllColumnList().stream()
+                .filter(c -> c.isInclude())
+                .map(c -> c.getTargetColumnName())
+                .collect(Collectors.joining(", "));
+        String placeHolders = tableMeta.getAllColumnList().stream()
+                .filter(c -> c.isInclude())
+                .map(c -> "?")
+                .collect(Collectors.joining(", "));
+        //CollapsingMergeTree系列需默认追加_sign列。
+        if (tableMeta.getCkTableEngine().contains(CMT_ENGINE)) {
+            insertColumnNames = insertColumnNames + ",_sign";
+            placeHolders = placeHolders + ",?";
         }
-        return sql.toString();
+        return String.format(INSERT_SQL_COLUMNS_TEMPLATE, tableMeta.getTargetTableName(), insertColumnNames, placeHolders);
     }
 
-    /**
-     * 持久化
-     *
-     * @param sql
-     * @param ds
-     * @return
-     */
-//    public int saveToCk(String sql, DataSource ds) {
-//        Connection conn = null;
-//        try {
-//            conn = ds.getConnection();
-//            return SqlExecutor.execute(conn, sql);
-//        } catch (SQLException e) {
-//            log.error("execute sql error:", e);
-//            String filePath=System.getProperty("java.io.tmpdir")+File.separator+new SecureRandom().nextInt(9999999)+".error.sql";
-//            FileWriter writer = new FileWriter(filePath);
-//            writer.write(sql);
-//            throw new ShouldNeverHappenException("execute sql error,error sql:"+filePath);
-//        } finally {
-//            DbUtil.close(conn);
-//        }
-//    }
-
 
     /**
      * 持久化
@@ -392,23 +398,35 @@ public class CkLoadServiceImpl extends AbstractLoadService {
      * @param ds
      * @return
      */
-    public long saveToCk(String sql, DataSource ds) {
+    public long saveToCk(String sql, DataSource ds, List<Object> valueList, int sqlSize) {
         Connection connection = null;
-        Statement stmt = null;
+        PreparedStatement ps = null;
+        long columnNum = valueList.size() / sqlSize;
+        log.debug("sql:{}", sql);
+        log.debug("valueList.size():{} columnNum:{} sqlSize:{}", valueList.size(), columnNum, sqlSize);
         try {
             connection = ds.getConnection();
             connection.setAutoCommit(true);
-            stmt = connection.createStatement();
-            return stmt.executeUpdate(sql);
+            ps = connection.prepareStatement(sql);
+            int valueIndex = 0;
+            for (int i = 0; i < sqlSize; i++) {
+                for (int c = 1; c <= columnNum; c++) {
+                    ps.setObject(c, valueList.get(valueIndex));
+                    valueIndex++;
+                }
+                ps.addBatch();
+            }
+            int[] affectArray = ps.executeBatch();
+            return affectArray.length;
         } catch (Exception e) {
-            log.error("saveToCk error",e);
+            log.error("saveToCk error", e);
             throw new ShouldNeverHappenException(e);
         } finally {
-            DbUtil.close(stmt,connection);
+            DbUtil.close(ps, connection);
         }
     }
 
-    public static boolean isSaveQueueEmpty(){
+    public static boolean isSaveQueueEmpty() {
         return saveQueue.isEmpty();
     }
 }
