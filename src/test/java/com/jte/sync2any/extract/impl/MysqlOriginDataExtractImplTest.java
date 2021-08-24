@@ -1,20 +1,21 @@
 package com.jte.sync2any.extract.impl;
 
-import cn.hutool.core.io.file.FileReader;
-import com.alibaba.druid.sql.ast.SQLStatement;
-import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlInsertStatement;
-import com.alibaba.druid.sql.dialect.mysql.parser.MySqlStatementParser;
 import com.jte.sync2any.conf.RuleConfigParser;
 import com.jte.sync2any.extract.OriginDataExtract;
 import com.jte.sync2any.model.config.Sync2any;
+import com.jte.sync2any.model.es.CudRequest;
 import com.jte.sync2any.model.mysql.TableMeta;
+import com.jte.sync2any.transform.impl.MysqlDumpTransformImpl;
 import org.buildobjects.process.ProcBuilder;
 import org.buildobjects.process.ProcResult;
 import org.junit.Assert;
 import org.junit.Test;
 
 import javax.annotation.Resource;
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.sql.SQLException;
+import java.util.Iterator;
 import java.util.List;
 
 public class MysqlOriginDataExtractImplTest  {
@@ -49,18 +50,14 @@ public class MysqlOriginDataExtractImplTest  {
     }
 
     @Test
-    public void sqlTest()
-    {
-        FileReader fileReader = new FileReader("C:\\Users\\JerryYin\\Desktop\\room_tail.sql");
-        List<String> lines=fileReader.readLines();
-        for(String line:lines){
-            MySqlStatementParser parser = new MySqlStatementParser(line);
-            SQLStatement statement = parser.parseStatement();
-            MySqlInsertStatement insert = (MySqlInsertStatement)statement;
-            System.out.println(insert.getTableName()+"-"+insert.getValuesList().size());
-            if(insert.getValuesList().size() == 2062){
-                System.out.println(line);
-            }
+    public void sqlTest() throws FileNotFoundException {
+        TableMeta tableMeta=RuleConfigParser.RULES_MAP.getIfPresent("test$t_pms_member");
+        File file = new File("C:\\Users\\JerryYin\\Desktop\\t_pms_room_log.error.sql");
+        Iterator<List<CudRequest>> result=  new MysqlDumpTransformImpl().transform(file,tableMeta);
+        while (result.hasNext())
+        {
+            List<CudRequest> r=result.next();
+            System.out.println(r.size());
         }
     }
 

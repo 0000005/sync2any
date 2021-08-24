@@ -11,6 +11,7 @@ import org.junit.Test;
 import javax.annotation.Resource;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.util.Iterator;
 import java.util.List;
 
 public class MysqlDumpTransformImplTest  extends Tester {
@@ -22,8 +23,8 @@ public class MysqlDumpTransformImplTest  extends Tester {
     @Test
     public void transformUpdateTest() throws FileNotFoundException {
         TableMeta tableMeta=RuleConfigParser.RULES_MAP.getIfPresent("test$t_pms_member");
-        File file = new File(this.getClass().getResource("/test/dump.data.sql").getFile());
-        MysqlDumpTransformImpl.FileEsRequest result= (MysqlDumpTransformImpl.FileEsRequest) dumpTransform.transform(file,tableMeta);
+        File file = new File(this.getClass().getResource("C:\\Users\\JerryYin\\Desktop\\t_pms_room_log.error.sql").getFile());
+        Iterator<List<CudRequest>> result=  new MysqlDumpTransformImpl().transform(file,tableMeta);
         while (result.hasNext())
         {
             List<CudRequest> r=result.next();

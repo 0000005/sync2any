@@ -60,7 +60,15 @@ public class CkLoadServiceImpl extends AbstractLoadService {
     /**
      * 每次批量新增任务最大的处理数量
      */
-    private final int maxHandleNumPerBatchAdd = 50000;
+    private final int maxHandleNumPerBatchAdd = 20000;
+
+    /**
+     * 每次传到ck的sql最大空间大小（byte）,该值如果过大，可能会导致内存溢出（在mysqldump时，每条sql比较大的情况下）。
+     * String 空间占用：https://www.cnblogs.com/binghe001/p/13860617.html
+     * 40 + 2 * n；默认500M
+     * 因为不方便得到sql的长度，因此暂不启动该条件
+     */
+    //private final int maxSentSizePerAdd = 40 + (2 * 250000000);
 
     @Resource
     Map<String, Object> allTargetDatasource;

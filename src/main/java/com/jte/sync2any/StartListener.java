@@ -151,9 +151,9 @@ public class StartListener {
                 loadService.checkAndCreateStorage(currTableMeta);
                 //开始同步原始数据
                 File dataFile = mysqlDumpFiles.get(key);
-                Iterator iterator = dumpTransform.transform(dataFile, currTableMeta);
+                Iterator<List<CudRequest>> iterator = dumpTransform.transform(dataFile, currTableMeta);
                 while (iterator.hasNext()) {
-                    List<CudRequest> requestList = (List<CudRequest>) iterator.next();
+                    List<CudRequest> requestList = iterator.next();
                     if (requestList.size() > 0) {
                         loadService.batchAdd(requestList);
                     }
