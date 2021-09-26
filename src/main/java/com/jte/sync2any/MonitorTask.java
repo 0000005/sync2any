@@ -68,7 +68,7 @@ public class MonitorTask implements Runnable {
             //先过滤数据库
             Set<String> metaKeySet = tableRules.keySet()
                     .stream()
-                    .filter(k -> k.startsWith(config.getSourceDbId() + "$"))
+                    .filter(k -> k.startsWith(config.getTargetDbId() + "$"+config.getSourceDbId() + "$"))
                     .collect(Collectors.toSet());
             //再过滤表
             for (String metaKey : metaKeySet) {

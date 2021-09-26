@@ -148,7 +148,7 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String, by
 
             //从topicName中匹配源数据库
             SyncConfig syncConfig = sync2any.findSyncConfigByTopicGroup(mq.getTopicGroup());
-            String ruleKey = syncConfig.getSourceDbId() + "$" + tableName.toLowerCase();
+            String ruleKey = syncConfig.getTargetDbId() + "$" + syncConfig.getSourceDbId() + "$" + tableName.toLowerCase();
             TableMeta tableMeta = RuleConfigParser.RULES_MAP
                     .getIfPresent(ruleKey);
             if (Objects.isNull(tableMeta)) {

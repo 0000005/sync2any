@@ -34,7 +34,7 @@ public class TargetDatasourcesConfig {
         targetDatasources.getDatasources().stream().forEach(conn->{
             if(StringUtils.isBlank(conn.getUrl())||StringUtils.isBlank(conn.getUsername()))
             {
-                log.error("请填写elasticsearch的相关配置。");
+                log.error("请填写完整目标数据库的相关配置。");
                 System.exit(500);
             }
             if(StringUtils.isBlank(conn.getDbId()))

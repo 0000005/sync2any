@@ -44,7 +44,7 @@ target.datasources:
   -
     #【必填】标识数据源，每个必须不一样
     db-id: 1
-    #目标数据源的类型（可以为es或mysql）
+    #目标数据源的类型（可以为es或mysql或clickhouse）
     type: es
     #当为es时可以填写多个地址，以逗号分割
     url: 192.168.10.208:9200,192.168.10.209:9200
@@ -53,7 +53,7 @@ target.datasources:
   -
     #【必填】标识数据源，每个必须不一样
     db-id: 2
-    #目标数据源的类型（可以为es或mysql）
+    #目标数据源的类型（可以为es或mysql或clickhouse）
     type: mysql
     url: jdbc:mysql://127.0.0.1:3306/test?useUnicode=true&useSSL=false&characterEncoding=UTF-8&autoReconnect=true&failOverReadOnly=false&useOldAliasMetadataBehavior=true&allowMultiQueries=true&serverTimezone=Hongkong
     username: root
@@ -61,7 +61,7 @@ target.datasources:
   -
     #【必填】标识数据源，每个必须不一样
     db-id: 3
-    #目标数据源的类型（可以为es或mysql）
+    #目标数据源的类型（可以为es或mysql或clickhouse）
     type: clickhouse
     url: jdbc:clickhouse://127.0.0.1:8121/test
     username: default

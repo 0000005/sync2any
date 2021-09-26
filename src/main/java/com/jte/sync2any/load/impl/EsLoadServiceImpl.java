@@ -246,8 +246,8 @@ public class EsLoadServiceImpl extends AbstractLoadService {
             {
                 ObjectNode rowValue=mapper.createObjectNode();
                 rowValue.put("type","text");
-                rowValue.put("analyzer","ik_max_word");
-                rowValue.put("search_analyzer","ik_smart");
+                rowValue.put("analyzer","standard");
+                rowValue.put("search_analyzer","standard");
                 ObjectNode rowFieldsValue=mapper.createObjectNode().set("ser",rowValue);
                 typeValue=mapper.createObjectNode()
                         .put("type","keyword")
