@@ -48,6 +48,7 @@ public class MysqlDumpTransformImpl implements DumpTransform {
         List<String> pkColumnName = tableMeta.getPrimaryKeyOnlyName();
         List<ColumnMeta> pkColumnMetaList = tableMeta.getAllColumnList()
                 .stream().filter(c -> pkColumnName.contains(c.getColumnName()))
+                .sorted()
                 .collect(Collectors.toList());
         List<SQLExpr> valueList = values.getValues();
         for (int i = 0; i < pkColumnMetaList.size(); i++) {

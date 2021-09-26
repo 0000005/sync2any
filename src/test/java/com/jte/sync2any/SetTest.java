@@ -3,9 +3,8 @@ package com.jte.sync2any;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * @author JerryYin
@@ -27,6 +26,15 @@ public class SetTest {
         }
 
         Assert.assertEquals(2,s.size());
+
+    }
+
+    @Test
+    public void sortTest(){
+        List<String> s = new ArrayList<>();
+        s.add("group_code");
+        s.add("id");
+        System.out.println(s.stream().sorted().collect(Collectors.toList()));
 
     }
 }
