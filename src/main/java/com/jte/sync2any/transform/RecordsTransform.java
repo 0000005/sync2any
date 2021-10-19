@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static com.jte.sync2any.model.mq.SubscribeDataProto.DMLType.*;
 
@@ -40,8 +41,6 @@ public abstract class RecordsTransform {
      * @return
      */
     public abstract CudRequest transform(TableRecords records);
-
-
 
 
     /**
@@ -112,7 +111,10 @@ public abstract class RecordsTransform {
         StringBuilder pkValueStr = new StringBuilder();
         Map<String, Field> pkRow = getPkValueMap(records);
         int index = 0;
-        for (String columnName : pkRow.keySet()) {
+        List<String> nameList = new ArrayList<>();
+        nameList.addAll(pkRow.keySet());
+        nameList = nameList.stream().sorted().collect(Collectors.toList());
+        for (String columnName : nameList) {
             if (index > 0) {
                 pkValueStr.append("_");
             }

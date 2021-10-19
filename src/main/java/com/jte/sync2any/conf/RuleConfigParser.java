@@ -82,6 +82,7 @@ public class RuleConfigParser {
             config.setTargetConn(conn);
             //获取所有的表名
             List<String> tableNameList = metaExtract.getAllTableName(config.getSourceDbId());
+            log.debug("all tables:", tableNameList);
             //查看表名是否匹配
             String[] syncTableArray = config.getSyncTables().split(",");
             for (String syncTableName : syncTableArray) {

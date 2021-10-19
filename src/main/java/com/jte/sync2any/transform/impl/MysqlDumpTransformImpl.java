@@ -45,14 +45,18 @@ public class MysqlDumpTransformImpl implements DumpTransform {
     private String getPkValueStr(SQLInsertStatement.ValuesClause values, TableMeta tableMeta) {
         StringBuilder docId = new StringBuilder();
         //主键字段名
-        List<String> pkColumnName = tableMeta.getPrimaryKeyOnlyName();
-        List<ColumnMeta> pkColumnMetaList = tableMeta.getAllColumnList()
-                .stream().filter(c -> pkColumnName.contains(c.getColumnName()))
+        List<String> pkColumnName = tableMeta.getPrimaryKeyOnlyName()
+                .stream()
                 .sorted()
+                .collect(Collectors.toList());;
+        List<String> allColumnNameList = tableMeta.getAllColumnList()
+                .stream()
+                .map(c->c.getColumnName())
                 .collect(Collectors.toList());
+
         List<SQLExpr> valueList = values.getValues();
-        for (int i = 0; i < pkColumnMetaList.size(); i++) {
-            int valueIndex = pkColumnName.indexOf(pkColumnMetaList.get(i).getColumnName());
+        for (int i = 0; i < pkColumnName.size(); i++) {
+            int valueIndex = allColumnNameList.indexOf(pkColumnName.get(i));
             if (i > 0) {
                 docId.append("_");
             }

@@ -23,7 +23,7 @@ import lombok.Data;
  * @author sharajava
  */
 @Data
-public class ColumnMeta {
+public class ColumnMeta implements Comparable<ColumnMeta> {
     private String tableCat;
     private String tableSchemaName;
     private String tableName;
@@ -48,4 +48,9 @@ public class ColumnMeta {
      * 是否生效（由配置field-filter决定）；默认为true
      */
     private boolean isInclude=true;
+
+    @Override
+    public int compareTo(ColumnMeta o) {
+        return columnName.compareTo(o.getColumnName());
+    }
 }

@@ -53,14 +53,17 @@ public class EsLoadServiceImpl extends AbstractLoadService {
         RestHighLevelClient client = (RestHighLevelClient) DbUtils.getTargetDsByDbId(allTargetDatasource,request.getTableMeta().getTargetDbId());
         if(INSERT == request.getDmlType())
         {
+            log.debug("es insert id:{} index:{}",request.getPkValueStr(),request.getTable());
             return addData(request,client);
         }
         else if(UPDATE == request.getDmlType())
         {
+            log.debug("es update id:{} index:{}",request.getPkValueStr(),request.getTable());
             return updateData(request,client);
         }
         else if(DELETE == request.getDmlType())
         {
+            log.debug("es delete id:{} index:{}",request.getPkValueStr(),request.getTable());
             return deleteData(request,client);
         }
         else

@@ -183,7 +183,7 @@ public class CkLoadServiceImpl extends AbstractLoadService {
 
         DataSource ds = (DataSource) allTargetDatasource.get(tableMeta.getTargetDbId());
         saveToCk(sql, ds, valueList, batchAddQueueSize);
-        log.info("batch save size:{} table:{}", batchAddQueueSize, tableMeta.getTargetTableName());
+        log.info("batch save size:{} table:{} targetDbId:{}", batchAddQueueSize, tableMeta.getTargetTableName(),tableMeta.getTargetDbId());
         //清空缓冲数组
         batchAddQueue.clear();
 
