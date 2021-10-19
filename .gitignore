@@ -32,3 +32,4 @@ build/
 /config/application-dev.yml
 /config/application-prod.yml
 /config/application-prod_log.yml
+/config/application-prod_business.yml
