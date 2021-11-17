@@ -3,6 +3,7 @@ package com.jte.sync2any.conf;
 import com.jte.sync2any.extract.KafkaMsgListener;
 import com.jte.sync2any.model.config.KafkaMate;
 import com.jte.sync2any.model.config.Mq;
+import com.jte.sync2any.model.config.SourceMysqlDb;
 import com.jte.sync2any.model.config.Sync2any;
 import com.jte.sync2any.model.core.SyncState;
 import com.jte.sync2any.model.mysql.TableMeta;
@@ -37,6 +38,8 @@ public class KafkaConfig {
     RecordsTransform transform;
     @Resource
     RuleConfigParser ruleConfigParser;
+    @Resource
+    SourceMysqlDb sourceMysqlDb;
 
     public static final Set<KafkaMessageListenerContainer> KAFKA_SET = new HashSet<>();
 
@@ -72,7 +75,7 @@ public class KafkaConfig {
         containerProps.setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
         //异步提交
         containerProps.setSyncCommits(false);
-        containerProps.setMessageListener(new KafkaMsgListener(mq,transform, sync2any, ruleConfigParser));
+        containerProps.setMessageListener(new KafkaMsgListener(sourceMysqlDb,mq,transform, sync2any, ruleConfigParser));
 
         Map<String, Object> props = consumerProps(mq);
         DefaultKafkaConsumerFactory<String, byte[]> cf = new DefaultKafkaConsumerFactory<>(props);

@@ -100,7 +100,7 @@ public class StateController {
             });
             return  "ok";
         } else {
-            log.info("failed to start listening!", container.getBeanName());
+            log.info("failed to start listening! {} ", topicGroup);
             return  "fail to start new listener";
         }
     }

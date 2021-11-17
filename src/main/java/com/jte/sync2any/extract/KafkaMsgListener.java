@@ -5,15 +5,14 @@ import com.jte.sync2any.MonitorTask;
 import com.jte.sync2any.conf.KafkaConfig;
 import com.jte.sync2any.conf.RuleConfigParser;
 import com.jte.sync2any.load.AbstractLoadService;
-import com.jte.sync2any.model.config.Mq;
-import com.jte.sync2any.model.config.Sync2any;
-import com.jte.sync2any.model.config.SyncConfig;
+import com.jte.sync2any.model.config.*;
 import com.jte.sync2any.model.core.SyncState;
 import com.jte.sync2any.model.es.CudRequest;
 import com.jte.sync2any.model.mq.SubscribeDataProto;
 import com.jte.sync2any.model.mysql.TableMeta;
 import com.jte.sync2any.model.mysql.TableRecords;
 import com.jte.sync2any.transform.RecordsTransform;
+import com.jte.sync2any.util.DbUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Header;
@@ -42,6 +41,7 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String, by
     private Sync2any sync2any;
     private RecordsTransform transform;
     private RuleConfigParser ruleConfigParser;
+    private SourceMysqlDb sourceMysqlDb;
 
     /**
      * 同一个分区（kafka）的同一个分片(tdsql)中 序号（partitionSeq） 是单调递增且连续的。
@@ -52,8 +52,9 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String, by
 
     private HashMap<String, ByteArrayOutputStream> shardMsgMap = new HashMap<>();
 
-    public KafkaMsgListener(Mq mq, RecordsTransform transform, Sync2any sync2any, RuleConfigParser ruleConfigParser) {
-        log.warn("new KafkaMsgListener topicGroup:{}",mq.getTopicGroup());
+    public KafkaMsgListener(SourceMysqlDb sourceMysqlDb,Mq mq, RecordsTransform transform, Sync2any sync2any, RuleConfigParser ruleConfigParser) {
+        log.warn("new KafkaMsgListener topicGroup:{}", mq.getTopicGroup());
+        this.sourceMysqlDb = sourceMysqlDb;
         this.mq = mq;
         this.transform = transform;
         this.sync2any = sync2any;
@@ -146,24 +147,31 @@ public class KafkaMsgListener implements AcknowledgingMessageListener<String, by
             log.debug("receive data change dmlType:{},dbName:{},tableName{},topicName{},rowSize:{}"
                     , dmlType.toString(), dbName, tableName, topicName, dmlEvt.getRowsList().size());
 
-            //从topicName中匹配源数据库
+            //***********************从topicGroup中匹配源数据库*************************
             SyncConfig syncConfig = sync2any.findSyncConfigByTopicGroup(mq.getTopicGroup());
+            Conn conn = DbUtils.getConnByDbId(sourceMysqlDb.getDatasources(), syncConfig.getSourceDbId());
+            if (Objects.nonNull(conn) && !conn.getDbName().equalsIgnoreCase(dbName)) {
+                //如果mq数据中的源数据库和配置文件中的源数据库不匹配，直接抛弃。
+                log.debug("ignore msg because source database is not match.{} != {} ", conn.getDbName(), dbName);
+                return;
+            }
             String ruleKey = syncConfig.getTargetDbId() + "$" + syncConfig.getSourceDbId() + "$" + tableName.toLowerCase();
             TableMeta tableMeta = RuleConfigParser.RULES_MAP
                     .getIfPresent(ruleKey);
             if (Objects.isNull(tableMeta)) {
-                log.debug("tableMeta not found when receive msg from mq. this msg will be ignored. db:{}.{} ruleKey:{} topicGroup:{}", dbName, tableName ,ruleKey,mq.getTopicGroup());
+                //抛弃不需要同步的表
+                log.debug("tableMeta not found when receive msg from mq. this msg will be ignored. db:{}.{} ruleKey:{} topicGroup:{}", dbName, tableName, ruleKey, mq.getTopicGroup());
                 return;
             }
 
             for (SubscribeDataProto.RowChange row : dmlEvt.getRowsList()) {
-
                 //将mq的信息转为mysql形式，且已经进行了规则的处理
                 TableRecords tableRecords = TableRecords.buildRecords(tableMeta, row, dmlEvt);
                 //将tableRecords 转化为可操作的形式
                 AbstractLoadService loadService = AbstractLoadService.getLoadService(syncConfig.getTargetConn().getType());
                 CudRequest request = transform.transform(tableRecords);
-
+                log.info("同步数据主键：{}，topicGroup:{}，ruleKey:{}，tableName:{}.{}",
+                        request.getPkValueStr(), mq.getTopicGroup(), ruleKey, dbName, tableName);
                 if (Objects.isNull(request)) {
                     log.error("CudRequest 为null,mq:{}", data.value());
                 }

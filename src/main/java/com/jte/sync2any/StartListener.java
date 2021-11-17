@@ -149,11 +149,14 @@ public class StartListener {
 
                 currTableMeta.setState(SyncState.LOADING_ORIGIN_DATA);
                 loadService.checkAndCreateStorage(currTableMeta);
+                //同步数量
+                int count=0;
                 //开始同步原始数据
                 File dataFile = mysqlDumpFiles.get(key);
                 Iterator<List<CudRequest>> iterator = dumpTransform.transform(dataFile, currTableMeta);
                 while (iterator.hasNext()) {
                     List<CudRequest> requestList = iterator.next();
+                    count =count + requestList.size();
                     if (requestList.size() > 0) {
                         loadService.batchAdd(requestList);
                     }
@@ -163,8 +166,8 @@ public class StartListener {
                 if (Objects.nonNull(dataFile) && dataFile.exists()) {
                     FileUtils.forceDelete(dataFile);
                 }
-                log.warn("load origin data is success,tableName:{},dbName:{},esIndex:{},topicName:{} costTime:{}",
-                        currTableMeta.getTableName(), currTableMeta.getDbName(), currTableMeta.getTargetTableName(), currTableMeta.getTopicName(), (System.currentTimeMillis() - startTime));
+                log.warn("load origin data is success,tableName:{},dbName:{},esIndex:{},topicName:{} costTime:{} rows:{}",
+                        currTableMeta.getTableName(), currTableMeta.getDbName(), currTableMeta.getTargetTableName(), currTableMeta.getTopicName(), (System.currentTimeMillis() - startTime), count);
                 currTableMeta.setState(SyncState.WAIT_TO_LISTENING);
                 //7、启动其他mq的监听。
                 startListening(currTableMeta);

@@ -133,6 +133,7 @@ public class EsLoadServiceImpl extends AbstractLoadService {
             if (bulkResponse.hasFailures())
             {
                 effectNums += Arrays.stream(bulkResponse.getItems()).filter(e->!e.isFailed()).count();
+                log.error("batch add error:{}",bulkResponse.buildFailureMessage());
             }
             else
             {
